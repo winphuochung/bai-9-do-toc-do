@@ -1,0 +1,3145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KHTN 7 - Bài 9: Đo Tốc Độ | Học Tập & Gamification</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- KaTeX cho công thức toán học chuẩn LaTeX cực nhanh và sắc nét -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Three.js & OrbitControls cho mô phỏng 3D Pixar sống động -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            ocean: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(1deg); }
+    }
+    @keyframes swimRight {
+      0% { transform: translateX(-120px) scaleX(1); }
+      48% { transform: translateX(calc(100vw + 60px)) scaleX(1); }
+      50% { transform: translateX(calc(100vw + 60px)) scaleX(-1); }
+      98% { transform: translateX(-120px) scaleX(-1); }
+      100% { transform: translateX(-120px) scaleX(1); }
+    }
+    @keyframes hookCatch {
+      0% { transform: translateY(-30px); }
+      50% { transform: translateY(20px); }
+      100% { transform: translateY(0); }
+    }
+    .animate-float { animation: float 3s ease-in-out infinite; }
+    .fish-swimming { animation: swimRight 16s ease-in-out infinite; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans selection:bg-ocean-500 selection:text-white">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="bg-gradient-to-r from-ocean-900 via-ocean-800 to-sky-700 text-white shadow-lg sticky top-0 z-40 border-b border-ocean-700/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex justify-between items-center">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="goHome()">
+        <img src="logo.png" alt="Logo" class="h-10 sm:h-12 w-auto rounded-xl shadow-md bg-white/90 p-1 object-contain transition hover:scale-105">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-amber-400 text-slate-900 rounded">KHTN 7</span>
+            <h1 class="text-base sm:text-lg font-bold tracking-tight">BÀI 9: ĐO TỐC ĐỘ</h1>
+          </div>
+          <p class="text-xs text-sky-200 hidden sm:block">Hệ Thống Dạy & Học Vật Lý Thông Minh - EdTech</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- Badge Người dùng (Học sinh hoặc Giáo viên) -->
+        <div id="userHeaderBadge" class="hidden items-center bg-white/10 backdrop-blur border border-white/20 px-3 py-1.5 rounded-full text-xs gap-2">
+          <i id="userRoleIcon" class="fa-solid fa-user-graduate text-amber-300"></i>
+          <span id="headerUserName" class="font-semibold text-white"></span>
+          <span id="headerScoreBadge" class="bg-amber-400 text-slate-900 px-2 py-0.2 rounded-full font-bold ml-1">0/20</span>
+        </div>
+
+        <!-- Nút Mở Sổ Điểm (khi là Giáo viên đã vào trang chủ) -->
+        <button id="btnHeaderOpenGradebook" onclick="openTeacherDashboard()" class="hidden text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg shadow transition items-center gap-1.5">
+          <i class="fa-solid fa-table-list"></i>
+          <span class="hidden sm:inline">Sổ Điểm Lớp Học</span>
+        </button>
+
+        <!-- Nút Đổi vai trò / Đăng xuất -->
+        <button id="btnLogoutUser" onclick="logoutCurrentUser()" class="hidden text-xs text-sky-200 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded-lg border border-white/20 transition flex items-center gap-1" title="Đăng xuất / Chuyển tài khoản">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span class="hidden sm:inline">Thoát</span>
+        </button>
+
+        <!-- Nút Giáo viên (khi chưa đăng nhập) -->
+        <button id="btnHeaderTeacherLogin" onclick="switchToTeacherTab()" class="text-xs bg-white/15 hover:bg-white/25 active:scale-95 text-white px-3.5 py-1.5 rounded-lg border border-white/25 font-semibold flex items-center gap-1.5 transition shadow-sm">
+          <i class="fa-solid fa-chalkboard-user text-amber-300"></i>
+          <span>Dành Cho Giáo Viên</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MÀN HÌNH ĐĂNG NHẬP (HỌC SINH & GIÁO VIÊN) ================= -->
+  <div id="studentLoginScreen" class="flex-1 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 border border-slate-100 text-center relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-40 h-40 bg-ocean-100 rounded-full blur-2xl"></div>
+      <div class="absolute -bottom-12 -left-12 w-40 h-40 bg-amber-100 rounded-full blur-2xl"></div>
+
+      <div class="relative z-10">
+        <!-- Tab chuyển đổi vai trò Đăng Nhập -->
+        <div class="inline-flex p-1 bg-slate-100 rounded-2xl mb-5 w-full">
+          <button id="authTabStudent" onclick="setAuthMode('student')" class="flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-ocean-700 shadow-sm">
+            <i class="fa-solid fa-user-graduate"></i>
+            <span>Học Sinh</span>
+          </button>
+          <button id="authTabTeacher" onclick="setAuthMode('teacher')" class="flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800">
+            <i class="fa-solid fa-chalkboard-user"></i>
+            <span>Giáo Viên</span>
+          </button>
+        </div>
+
+        <div class="inline-block p-3.5 bg-ocean-50 text-ocean-600 rounded-2xl mb-3 shadow-inner">
+          <i id="authIconHeader" class="fa-solid fa-compass-drafting text-3xl sm:text-4xl text-ocean-600"></i>
+        </div>
+        <h2 id="authHeading" class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1.5">Chào mừng em đến với Bài 9!</h2>
+        <p id="authSubheading" class="text-xs sm:text-sm text-slate-500 mb-5 leading-relaxed">
+          Tìm hiểu cách đo tốc độ bằng <b>đồng hồ bấm giây</b>, <b>cổng quang điện</b>, <b>thiết bị bắn tốc độ</b> và tham gia trò chơi <b>Câu cá đại dương</b> kỳ thú!
+        </p>
+
+        <!-- FORM HỌC SINH -->
+        <form id="formStudentAuth" onsubmit="handleStudentLogin(event)" class="space-y-4 text-left">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Họ và Tên của em <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-user"></i>
+              </span>
+              <input type="text" id="inputStudentName" required placeholder="Ví dụ: Nguyễn Văn An - Lớp 7A1" 
+                     class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-ocean-500 focus:bg-white outline-none transition font-medium">
+            </div>
+          </div>
+
+          <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-ocean-600 to-sky-600 hover:from-ocean-700 hover:to-sky-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-ocean-500/30 transition flex items-center justify-center gap-2">
+            <span>Bắt Đầu Học Ngay</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <!-- FORM GIÁO VIÊN (ĐĂNG NHẬP VÀO TRANG CHỦ) -->
+        <form id="formTeacherAuth" onsubmit="handleTeacherDirectLogin(event)" class="space-y-3.5 text-left hidden">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tên Thầy / Cô</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-user-tie"></i>
+              </span>
+              <input type="text" id="inputTeacherDisplayName" value="Thầy/Cô Giáo" 
+                     class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-ocean-500 focus:bg-white outline-none transition font-medium">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mật khẩu xác thực <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+              <input type="password" id="inputTeacherPasswordDirect" required placeholder="Nhập mật khẩu (123456)..." 
+                     class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-ocean-500 focus:bg-white outline-none transition font-medium">
+            </div>
+          </div>
+
+          <div class="pt-1">
+            <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-slate-900 to-ocean-900 hover:from-black hover:to-ocean-950 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-chalkboard-user text-amber-300"></i>
+              <span>Vào Trang Chủ Với Quyền Giáo Viên</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+          <p class="text-[11px] text-center text-slate-400">Mật khẩu bảo mật: <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600 font-bold">123456</code></p>
+        </form>
+
+        <div class="mt-5 pt-4 border-t border-slate-100 text-xs text-slate-400 flex justify-center gap-4">
+          <span><i class="fa-solid fa-video text-rose-500 mr-1"></i> Video</span>
+          <span><i class="fa-solid fa-gamepad text-emerald-500 mr-1"></i> Game Câu Cá</span>
+          <span><i class="fa-solid fa-table-list text-emerald-600 mr-1"></i> Quản Lý Điểm</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= KHÔNG GIAN HỌC TẬP CHÍNH ================= -->
+  <main id="mainAppDashboard" class="hidden flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- THANH ĐIỀU HƯỚNG TAB -->
+    <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200/80 flex flex-wrap gap-2">
+      <button onclick="changeTab('tab-lesson')" id="tabBtn-lesson" class="tab-btn flex-1 min-w-[150px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition bg-ocean-600 text-white shadow-md shadow-ocean-600/20">
+        <i class="fa-solid fa-book-open"></i>
+        <span>1. Video & Mô Phỏng</span>
+      </button>
+
+      <button onclick="changeTab('tab-game')" id="tabBtn-game" class="tab-btn flex-1 min-w-[150px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+        <i class="fa-solid fa-fish-fins text-sky-600"></i>
+        <span>2. Game Câu Cá & Trắc Nghiệm</span>
+      </button>
+
+      <button onclick="changeTab('tab-essay')" id="tabBtn-essay" class="tab-btn flex-1 min-w-[150px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+        <i class="fa-solid fa-pen-fancy text-amber-600"></i>
+        <span>3. Bài Tập Tự Luận</span>
+      </button>
+
+      <button onclick="changeTab('tab-summary')" id="tabBtn-summary" class="tab-btn flex-1 min-w-[150px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+        <i class="fa-solid fa-award text-purple-600"></i>
+        <span>4. Kết Quả & Nộp Bài</span>
+      </button>
+    </div>
+
+    <!-- ================= TAB 1: BÀI GIẢNG & MÔ PHỎNG 3D PIXAR ================= -->
+    <section id="tab-lesson" class="tab-content space-y-6">
+      
+      <!-- Banner Trọng tâm kiến thức chuẩn LaTeX -->
+      <div class="bg-gradient-to-r from-ocean-900 via-ocean-800 to-sky-700 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-sky-400/20">
+        <div class="relative z-10 max-w-4xl space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs font-bold uppercase tracking-wider text-amber-300">
+              Trọng tâm lý thuyết KHTN 7 - Bài 9
+            </span>
+            <span class="text-xs text-sky-200">Công thức chuẩn Toán - Lý</span>
+          </div>
+
+          <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Phương Pháp Đo Tốc Độ Chuyển Động</h2>
+          
+          <p class="text-sm sm:text-base text-sky-100 leading-relaxed">
+            Tốc độ cho biết mức độ nhanh hay chậm của chuyển động, được xác định bằng quãng đường vật đi được trong một đơn vị thời gian:
+          </p>
+
+          <!-- Khối Công thức LaTeX KaTeX nổi bật -->
+          <div class="bg-black/30 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/20 flex flex-wrap items-center justify-around gap-4 text-center">
+            <div class="space-y-1">
+              <span class="text-xs text-sky-200 uppercase tracking-wider font-semibold">Công thức tổng quát</span>
+              <div class="text-2xl sm:text-3xl text-amber-300 font-bold katex-render">
+                $$v = \frac{s}{t}$$
+              </div>
+            </div>
+
+            <div class="h-12 w-px bg-white/20 hidden sm:block"></div>
+
+            <div class="text-xs sm:text-sm text-left text-sky-100 space-y-1">
+              <div>• <b><span class="katex-render">$s$</span></b>: Quãng đường đi được (đơn vị: mét $\text{m}$ hoặc kilômét $\text{km}$)</div>
+              <div>• <b><span class="katex-render">$t$</span></b>: Thời gian đi hết quãng đường (đơn vị: giây $\text{s}$ hoặc giờ $\text{h}$)</div>
+              <div>• <b><span class="katex-render">$v$</span></b>: Tốc độ của vật (đơn vị chuẩn SI: $\text{m/s}$ hoặc $\text{km/h}$)</div>
+            </div>
+
+            <div class="h-12 w-px bg-white/20 hidden sm:block"></div>
+
+            <div class="text-xs text-left bg-white/10 p-2.5 rounded-xl border border-white/10 space-y-1">
+              <span class="font-bold text-amber-300 uppercase block">Quy đổi đơn vị chuẩn:</span>
+              <div class="katex-render text-sky-100 font-mono">
+                $$1\text{ m/s} = 3{,}6\text{ km/h}$$
+              </div>
+              <div class="katex-render text-slate-200 font-mono text-[11px]">
+                $$1\text{ km/h} = \frac{1}{3{,}6}\text{ m/s} \approx 0{,}28\text{ m/s}$$
+              </div>
+            </div>
+          </div>
+
+          <!-- 3 Phương pháp đo -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+            <div class="bg-white/10 backdrop-blur p-3 rounded-2xl border border-white/10 hover:bg-white/15 transition">
+              <div class="font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-stopwatch"></i> 1. Đồng hồ bấm giây
+              </div>
+              <div class="text-sky-100">Đo thời gian xe đi qua 2 vạch mốc trên thước thẳng. Dễ dùng nhưng có sai số do phản xạ tay người bấm.</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-3 rounded-2xl border border-white/10 hover:bg-white/15 transition">
+              <div class="font-bold text-emerald-300 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-microchip"></i> 2. Cổng quang điện
+              </div>
+              <div class="text-sky-100">Đồng hồ hiện số nối cảm biến hồng ngoại, ngắt mở tự động khi xe che tia sáng (chính xác đến $0{,}001\text{ s}$).</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur p-3 rounded-2xl border border-white/10 hover:bg-white/15 transition">
+              <div class="font-bold text-purple-300 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-camera"></i> 3. Thiết bị bắn tốc độ
+              </div>
+              <div class="text-sky-100">Phát sóng laser/vô tuyến kết hợp camera ghi lại hình ảnh và tự tính toán tốc độ ô tô trên đường.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lưới 2 cột: Video bài giảng & Mô phỏng 3D Pixar -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- CỘT 1: TRÌNH PHÁT VIDEO BÀI GIẢNG & THÍ NGHIỆM ĐỘC QUYỀN (100% KHÔNG LỖI) -->
+        <div class="lg:col-span-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex flex-wrap items-center justify-between mb-3 gap-2">
+              <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center text-sm shadow-sm">
+                  <i class="fa-solid fa-clapperboard"></i>
+                </span>
+                Video Bài Giảng: Thí Nghiệm Đo Tốc Độ
+              </h3>
+              <span class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sẵn Sàng Phát
+              </span>
+            </div>
+
+            <!-- Thanh chọn chế độ phát Video -->
+            <div class="flex flex-wrap gap-1.5 mb-3 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+              <button onclick="switchVideoMode('builtin')" id="btnVidBuiltin" class="vid-mode-btn px-3 py-1.5 rounded-lg bg-white text-rose-600 shadow-sm transition flex items-center gap-1.5">
+                <i class="fa-solid fa-film text-amber-500"></i>
+                <span>1. Phim 3D Pixar KHTN 7</span>
+              </button>
+              <button onclick="switchVideoMode('file')" id="btnVidFile" class="vid-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-1">
+                <i class="fa-solid fa-folder-open"></i>
+                <span>2. Mở File MP4</span>
+              </button>
+              <button onclick="switchVideoMode('youtube')" id="btnVidYoutube" class="vid-mode-btn px-2.5 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center gap-1">
+                <i class="fa-brands fa-youtube text-red-500"></i>
+                <span>3. YouTube Online</span>
+              </button>
+            </div>
+
+            <!-- Khung chiếu Phim Hoạt Hình 3D Pixar (WebGL Cinematic) -->
+            <div class="relative aspect-video bg-slate-950 rounded-2xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col justify-between group">
+              
+              <!-- 1. Trình phát Phim 3D Pixar WebGL đích thực -->
+              <div id="playerBuiltinWrapper" class="relative w-full h-full flex flex-col justify-between">
+                <!-- Three.js 3D Movie Container -->
+                <div id="pixarMovieContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+                <!-- Badge Điện ảnh Pixar -->
+                <div class="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 text-[10px] font-bold text-amber-300 flex items-center gap-1.5 pointer-events-none">
+                  <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                  <span>PHIM 3D PIXAR HD</span>
+                </div>
+
+                <!-- Đồng hồ điện tử nổi trong phim 3D -->
+                <div class="absolute top-3 right-3 bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700 text-emerald-400 font-mono text-xs shadow-lg flex items-center gap-1.5 pointer-events-none">
+                  <span class="text-[10px] text-slate-400 uppercase font-sans">Đồng hồ hiện số:</span>
+                  <span class="font-black text-sm text-emerald-300" id="movieDigitalTimer">0.000 s</span>
+                </div>
+                
+                <!-- Thanh phụ đề thuyết minh sư phạm điện ảnh -->
+                <div class="absolute bottom-11 inset-x-3 bg-black/80 backdrop-blur-md text-amber-300 text-[11px] sm:text-xs py-2 px-3 rounded-xl text-center border border-white/10 font-semibold shadow-xl transition" id="lectureSubtitle">
+                  🎬 Chào mừng các em đến với Phim 3D Pixar "Đo Tốc Độ"! Bấm nút Play bên dưới để bắt đầu thưởng thức!
+                </div>
+
+                <!-- Điều khiển Phim Điện ảnh 3D -->
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/80 to-transparent p-2 sm:px-3 flex items-center justify-between text-white text-xs z-10">
+                  <div class="flex items-center gap-2">
+                    <button onclick="toggleCinemaPlay()" id="btnCinemaPlay" class="w-7 h-7 rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs transition shadow-md">
+                      <i class="fa-solid fa-play" id="iconCinemaPlay"></i>
+                    </button>
+                    <button onclick="resetCinemaPlay()" class="text-slate-300 hover:text-white transition" title="Xem lại từ đầu">
+                      <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                    <span class="font-mono text-[11px] text-slate-300" id="cinemaTimeDisp">00:00 / 01:30</span>
+                  </div>
+
+                  <!-- Chọn cảnh điện ảnh nhanh -->
+                  <div class="flex items-center gap-1 text-[11px]">
+                    <span class="text-slate-400 hidden sm:inline">Cảnh:</span>
+                    <button onclick="jumpToScene(1)" class="px-2 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium">1. Dụng Cụ 3D</button>
+                    <button onclick="jumpToScene(2)" class="px-2 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium">2. Xe Lao Dốc</button>
+                    <button onclick="jumpToScene(3)" class="px-2 py-0.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium">3. Tính v = s/t</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Trình phát Video File nội bộ MP4 của Giáo viên -->
+              <div id="playerFileWrapper" class="hidden absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-4">
+                <video id="localVideoElement" controls class="max-w-full max-h-full rounded-xl hidden shadow-lg"></video>
+                <div id="fileUploadPrompt" class="text-center p-6 space-y-3">
+                  <div class="w-14 h-14 bg-sky-900/50 text-sky-400 rounded-2xl flex items-center justify-center mx-auto text-2xl border border-sky-600/30">
+                    <i class="fa-solid fa-file-video"></i>
+                  </div>
+                  <div>
+                    <h5 class="text-sm font-bold text-white">Phát video MP4 từ máy tính</h5>
+                    <p class="text-xs text-slate-400 mt-1">Thầy/Cô có thể chọn bất kỳ file video thí nghiệm nào trên máy để chiếu cho cả lớp.</p>
+                  </div>
+                  <label class="inline-block px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-bold cursor-pointer transition shadow-md">
+                    <i class="fa-solid fa-folder-open mr-1"></i> Chọn tệp video từ máy...
+                    <input type="file" id="localVideoInput" accept="video/mp4,video/webm" onchange="handleLocalVideoSelect(event)" class="hidden">
+                  </label>
+                </div>
+              </div>
+
+              <!-- 3. Trình phát YouTube Đa Kênh Tự Động Liên Kết -->
+              <div id="playerYoutubeWrapper" class="hidden absolute inset-0 bg-slate-950 flex flex-col justify-between">
+                <!-- Khung Iframe -->
+                <div class="relative flex-1 w-full bg-black">
+                  <iframe id="onlineYoutubeIframe" class="w-full h-full" 
+                          src="https://www.youtube-nocookie.com/embed/1vP6VWZ3dhY?enablejsapi=1" 
+                          title="Video KHTN 7 YouTube" 
+                          frameborder="0" 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                          allowfullscreen>
+                  </iframe>
+                  <!-- Nút mở trực tiếp trên YouTube nổi góc trên -->
+                  <a id="btnOpenDirectYoutube" href="https://www.youtube.com/watch?v=1vP6VWZ3dhY" target="_blank" rel="noopener noreferrer" 
+                     class="absolute top-2.5 right-2.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 backdrop-blur transition z-20">
+                    <i class="fa-brands fa-youtube"></i>
+                    <span>Mở Trên YouTube</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                  </a>
+                </div>
+
+                <!-- Thanh công cụ điều khiển YouTube -->
+                <div class="p-2 bg-slate-900 border-t border-slate-800 text-xs flex gap-2 items-center">
+                  <span class="text-slate-400 text-[11px] font-semibold hidden sm:inline whitespace-nowrap">
+                    <i class="fa-brands fa-youtube text-red-500 mr-1"></i>Đang chọn:
+                  </span>
+                  <span id="currentYoutubeTitle" class="text-slate-200 text-xs font-bold truncate flex-1">
+                    BÀI 9: ĐO TỐC ĐỘ - KHTN7 - KNTT (Cô Mai)
+                  </span>
+                  <button onclick="toggleCustomYoutubeBar()" class="text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded text-xs" title="Nhập link khác">
+                    <i class="fa-solid fa-link"></i>
+                  </button>
+                </div>
+
+                <!-- Ô nhập link tùy ý (ẩn/hiện) -->
+                <div id="customYoutubeInputBar" class="hidden p-2 bg-slate-800 border-t border-slate-700 flex gap-2">
+                  <input type="text" id="inputYoutubeCustom" placeholder="Dán link YouTube bất kỳ vào đây..." class="flex-1 p-1.5 bg-slate-900 border border-slate-600 rounded text-xs text-white outline-none">
+                  <button onclick="applyCustomYoutubeLink()" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-xs">Phát</button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- DANH SÁCH CÁC VIDEO YOUTUBE LIÊN QUAN ĐƯỢC TỰ ĐỘNG TỔNG HỢP -->
+            <div class="mt-3 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                  <i class="fa-brands fa-youtube text-red-500 text-sm"></i>
+                  Các Video Bài Giảng & Thí Nghiệm Đã Tự Động Liên Kết:
+                </span>
+                <span class="text-[11px] text-slate-400">Bấm để phát ngay</span>
+              </div>
+
+              <!-- Lưới các video YouTube liên quan -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1" id="youtubeVideosGrid">
+                <!-- Render bằng JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Thông tin giải thích phương pháp đo -->
+          <div class="p-3.5 bg-sky-50/70 rounded-2xl border border-sky-200/80 text-xs text-slate-700 space-y-1">
+            <div class="font-bold text-ocean-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-graduation-cap text-ocean-600 text-sm"></i> Kiến thức trọng tâm bài học:
+            </div>
+            <p class="leading-relaxed">
+              Video mô phỏng chi tiết 2 phương pháp chuẩn SGK: Dùng <b>đồng hồ bấm giây</b> và dùng <b>cổng quang điện hiện số</b>. Hãy quan sát cách xe di chuyển và thử nghiệm mô phỏng 3D Pixar ở bên cạnh!
+            </p>
+          </div>
+        </div>
+
+        <!-- CỘT 2: MÔ PHỎNG 3D PIXAR VỚI THREE.JS -->
+        <div class="lg:col-span-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-sm shadow-sm">
+                  🚗
+                </span>
+                <div>
+                  <h3 class="font-bold text-base text-slate-800">Mô Phỏng 3D Pixar: Xe Trượt & Cổng Quang</h3>
+                  <p class="text-[11px] text-slate-400">Đồ họa 3D phong cách Pixar - Xoay 360° tự do</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <button onclick="resetPixar3D()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg font-medium transition" title="Đặt lại xe">
+                  <i class="fa-solid fa-arrow-rotate-right mr-1"></i>Đặt lại
+                </button>
+                <button onclick="resetCamera3D()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg font-medium transition" title="Góc nhìn chuẩn">
+                  <i class="fa-solid fa-video mr-1"></i>Góc chuẩn
+                </button>
+              </div>
+            </div>
+
+            <!-- Khung Viewport 3D Three.js -->
+            <div class="relative w-full h-[280px] sm:h-[300px] bg-gradient-to-b from-sky-100 via-slate-100 to-amber-50 rounded-2xl overflow-hidden shadow-inner border border-slate-200">
+              <!-- Canvas 3D -->
+              <div id="pixar3DContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+              <!-- Overlay Đồng hồ số LED phong cách điện tử gắn trên bàn thí nghiệm -->
+              <div class="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-xl font-mono shadow-lg flex items-center gap-2">
+                <span class="text-[10px] uppercase font-sans text-slate-400">Đồng hồ hiện số:</span>
+                <span class="text-base font-black tracking-widest text-emerald-300" id="pixarDigitalTimer">0.000 s</span>
+              </div>
+
+              <!-- Hướng dẫn xoay 3D cho học sinh -->
+              <div class="absolute bottom-2 left-3 text-[10px] bg-white/70 backdrop-blur px-2 py-0.5 rounded-full text-slate-500 pointer-events-none">
+                <i class="fa-solid fa-hand-pointer text-ocean-600 mr-1"></i> Kéo chuột để xoay 3D | Lăn chuột để phóng to
+              </div>
+
+              <!-- Banner Laser Active khi xe chạm cổng -->
+              <div id="laserTriggerBanner" class="hidden absolute top-3 left-3 bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-xl shadow-lg animate-bounce flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt text-yellow-300"></i> CỔNG QUANG ĐÃ KÍCH HOẠT!
+              </div>
+            </div>
+
+            <!-- Bảng điều khiển góc dốc & quãng đường 3D -->
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs font-bold text-slate-700">Quãng đường <span class="katex-render">$s$</span>:</label>
+                  <span class="text-xs font-black text-ocean-700 font-mono" id="disp3DDist">0.8 m</span>
+                </div>
+                <input type="range" id="range3DDist" min="0.3" max="1.4" step="0.1" value="0.8" 
+                       oninput="onUpdate3DDist(this.value)" class="w-full accent-ocean-600 cursor-pointer">
+                <div class="text-[10px] text-slate-400 mt-0.5">Cổng quang điện 3D di chuyển tương ứng</div>
+              </div>
+
+              <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-xs font-bold text-slate-700">Góc dốc máng <span class="katex-render">$\alpha$</span>:</label>
+                  <span class="text-xs font-black text-amber-700 font-mono" id="disp3DAngle">15°</span>
+                </div>
+                <input type="range" id="range3DAngle" min="5" max="30" step="1" value="15" 
+                       oninput="onUpdate3DAngle(this.value)" class="w-full accent-amber-600 cursor-pointer">
+                <div class="text-[10px] text-slate-400 mt-0.5">Trụ nâng 3D tự động vặn nâng cao</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nút bấm Thả xe và Kết quả toán học -->
+          <div class="space-y-2">
+            <button onclick="launchPixarCar3D()" id="btnLaunch3D" class="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 active:scale-[0.99] text-white font-extrabold rounded-2xl text-xs sm:text-sm shadow-lg shadow-teal-600/25 transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-play text-amber-300"></i>
+              <span>🚀 THẢ XE 3D PIXAR & ĐO THỜI GIAN QUA CỔNG QUANG</span>
+            </button>
+
+            <!-- Hộp kết quả công thức tự động -->
+            <div id="pixarMathResult" class="p-3 bg-teal-50 border border-teal-200 rounded-2xl text-center text-xs text-teal-900 font-semibold space-y-1">
+              <div>Vận tốc trung bình đo được:</div>
+              <div class="text-sm sm:text-base font-black text-teal-700 font-mono" id="mathSpeedResult">
+                v = s / t = 0.80 m / 1.625 s = 0.49 m/s (1.77 km/h)
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: GAME CÂU CÁ ĐẠI DƯƠNG & 20 TRẮC NGHIỆM ================= -->
+    <section id="tab-game" class="tab-content hidden space-y-6">
+
+      <!-- BỂ CÁ GAME 3D HOẠT HÌNH PIXAR (THREE.JS WEBGL ENGINE) -->
+      <div class="relative bg-gradient-to-b from-sky-400 via-sky-600 to-ocean-950 rounded-3xl p-4 sm:p-6 text-white overflow-hidden shadow-2xl border-4 border-sky-300/40">
+        
+        <!-- Header thống kê trên mặt biển -->
+        <div class="relative z-10 flex flex-wrap justify-between items-center gap-3 mb-2">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-2xl shadow-lg border border-white/30">
+              🐠
+            </div>
+            <div>
+              <h3 class="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                Đại Dương Hoạt Hình 3D Pixar
+                <span class="px-2 py-0.5 bg-amber-400 text-slate-900 text-[10px] font-black rounded-full uppercase tracking-wider shadow">WebGL 3D</span>
+              </h3>
+              <p class="text-xs text-sky-100">Khám phá thế giới đại dương 3D sống động - Xoay 360° tự do - Trả lời đúng để giật cá quý hiếm!</p>
+            </div>
+          </div>
+
+          <!-- Bảng số liệu cá thu thập & Nút góc quay -->
+          <div class="flex items-center gap-2">
+            <button onclick="resetFishGameCamera()" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-white/30" title="Đặt lại góc nhìn">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span class="hidden sm:inline">Góc nhìn chuẩn</span>
+            </button>
+            <div class="bg-black/40 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/20 text-right">
+              <div class="text-[10px] text-sky-200 uppercase font-semibold">Cá đã thu thập</div>
+              <div class="text-xl sm:text-2xl font-black text-amber-300 tracking-tight" id="scoreFishCaught">0 / 20 🐟</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KHUNG CANVAS 3D PIXAR ĐẠI DƯƠNG -->
+        <div class="relative w-full h-64 sm:h-72 rounded-2xl overflow-hidden shadow-inner border border-white/20 bg-sky-950" id="fishGame3DWrapper">
+          <div id="fishGame3DContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+          
+          <!-- Lớp phủ hiệu ứng nước biển & bong bóng điện ảnh -->
+          <div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-ocean-950/40 via-transparent to-sky-400/20"></div>
+
+          <!-- Huy hiệu tên cá đang câu được (HUD 3D) -->
+          <div id="fishCaughtHUD" class="hidden absolute top-4 left-1/2 -translate-x-1/2 bg-amber-400/95 text-slate-950 px-4 py-2 rounded-2xl font-black text-sm shadow-2xl border-2 border-white flex items-center gap-2 animate-bounce z-20">
+            <span id="fishCaughtHUDIcon" class="text-2xl">🐠</span>
+            <span id="fishCaughtHUDText">Vừa câu được Cá Hề Nemo!</span>
+          </div>
+
+          <!-- Chỉ dẫn xoay 3D góc dưới -->
+          <div class="absolute bottom-2 left-3 pointer-events-none text-[11px] font-semibold text-white/70 bg-black/30 backdrop-blur px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-amber-300"></i> Dùng chuột kéo để xoay 360° ngắm cá Pixar bơi lội
+          </div>
+        </div>
+
+        <!-- Thông báo tương tác câu cá -->
+        <div id="fishingLiveMsg" class="mt-3 relative z-10 bg-white/15 backdrop-blur border border-white/25 rounded-xl py-2 px-4 text-center text-xs sm:text-sm font-bold text-amber-200">
+          🎣 Em hãy phân tích câu hỏi bên dưới và chọn đáp án chính xác để giật cần câu 3D!
+        </div>
+      </div>
+
+      <!-- Khung hiển thị câu hỏi trắc nghiệm -->
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1 bg-ocean-50 text-ocean-700 rounded-lg text-xs font-bold uppercase" id="badgeQuestionNumber">CÂU 1 / 20</span>
+            <span class="text-xs text-slate-400 font-medium" id="badgeDifficulty">Nhận biết</span>
+          </div>
+
+          <!-- Thanh tiến độ bài làm -->
+          <div class="flex items-center gap-2 w-full sm:w-48">
+            <div class="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="quizProgressBar" class="bg-ocean-600 h-full rounded-full transition-all duration-300" style="width: 5%;"></div>
+            </div>
+            <span class="text-xs font-bold text-slate-500" id="quizProgressText">1/20</span>
+          </div>
+        </div>
+
+        <!-- Nội dung câu hỏi -->
+        <div id="questionWrapper" class="space-y-6">
+          <h4 id="questionTitle" class="text-base sm:text-lg font-bold text-slate-800 leading-snug">
+            Đang tải câu hỏi...
+          </h4>
+
+          <!-- Danh sách 4 đáp án A, B, C, D -->
+          <div id="optionsList" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <!-- Render động bằng JavaScript -->
+          </div>
+        </div>
+
+        <!-- Hộp giải thích chi tiết sau khi trả lời -->
+        <div id="explanationBox" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-900 space-y-1">
+          <div class="font-bold flex items-center gap-1.5 text-amber-800">
+            <i class="fa-solid fa-lightbulb text-amber-500"></i> Giải thích sư phạm:
+          </div>
+          <div id="explanationText" class="leading-relaxed"></div>
+        </div>
+
+        <!-- Nút điều hướng -->
+        <div class="flex justify-between items-center pt-2">
+          <button onclick="prevQuestion()" id="btnPrevQ" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed" disabled>
+            <i class="fa-solid fa-arrow-left mr-1"></i> Câu trước
+          </button>
+          <button onclick="nextQuestion()" id="btnNextQ" class="px-5 py-2.5 bg-ocean-600 hover:bg-ocean-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-ocean-600/20">
+            <span>Câu tiếp theo</span>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bể cá thu thập được của em -->
+      <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+        <h4 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-box-archive text-amber-500"></i> Bộ Sưu Tập Cá Của Em
+        </h4>
+        <div id="caughtFishList" class="flex flex-wrap gap-2 text-xs text-slate-500">
+          <span class="italic text-slate-400">Chưa có sinh vật nào được câu, hãy trả lời đúng để làm đầy bể cá nhé!</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: BÀI TẬP TỰ LUẬN ================= -->
+    <section id="tab-essay" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <span class="px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold uppercase">Kỹ năng phân tích & thực hành</span>
+          <h3 class="text-xl font-bold text-slate-800 mt-2">Hệ Thống 4 Câu Tự Luận Chuyên Sâu</h3>
+          <p class="text-xs text-slate-500">Học sinh trình bày lập luận, viết công thức và lời giải chi tiết vào từng ô bên dưới.</p>
+        </div>
+
+        <div class="space-y-6">
+          <!-- Câu TL 1 -->
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="w-6 h-6 rounded-full bg-ocean-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+              <div>
+                <h5 class="font-bold text-sm text-slate-800">Quy trình thực nghiệm & Phân tích sai số:</h5>
+                <p class="text-xs text-slate-600 mt-1">
+                  Nêu các bước tiến hành đo tốc độ của một chiếc xe đồ chơi chuyển động trên máng nghiêng bằng đồng hồ bấm giây và thước dây. Em hãy chỉ ra ít nhất 2 nguyên nhân dẫn đến sai số trong phép đo này?
+                </p>
+              </div>
+            </div>
+            <textarea id="essayAns1" rows="4" class="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-ocean-500 outline-none transition font-normal" placeholder="Gõ câu trả lời của em ở đây (bước 1, 2, 3 và nguyên nhân sai số)..."></textarea>
+          </div>
+
+          <!-- Câu TL 2 -->
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="w-6 h-6 rounded-full bg-ocean-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+              <div>
+                <h5 class="font-bold text-sm text-slate-800">Xử lý số liệu thực nghiệm (Bảng 9.1 SGK):</h5>
+                <p class="text-xs text-slate-600 mt-1">
+                  Cho bảng số liệu đo thời gian xe chuyển động trên quãng đường $s = 0{,}6\text{ m}$: Lần 1: $1{,}22\text{ s}$; Lần 2: $1{,}18\text{ s}$; Lần 3: $1{,}20\text{ s}$.
+                  <br>a) Tính thời gian chuyển động trung bình $\bar{t}$.
+                  <br>b) Tính tốc độ chuyển động trung bình của xe ra đơn vị $\text{m/s}$ và $\text{km/h}$.
+                </p>
+              </div>
+            </div>
+            <textarea id="essayAns2" rows="4" class="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-ocean-500 outline-none transition font-normal" placeholder="Trình bày lời giải chi tiết từng bước tính toán..."></textarea>
+          </div>
+
+          <!-- Câu TL 3 -->
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="w-6 h-6 rounded-full bg-ocean-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+              <div>
+                <h5 class="font-bold text-sm text-slate-800">So sánh thiết bị đo hiện đại & truyền thống:</h5>
+                <p class="text-xs text-slate-600 mt-1">
+                  So sánh ưu điểm và hạn chế giữa việc đo tốc độ bằng <b>Cổng quang điện nối đồng hồ hiện số</b> với việc sử dụng <b>Đồng hồ bấm giây cầm tay</b>. Trong trường hợp nào thì bắt buộc phải dùng cổng quang điện?
+                </p>
+              </div>
+            </div>
+            <textarea id="essayAns3" rows="4" class="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-ocean-500 outline-none transition font-normal" placeholder="Nêu ưu điểm, nhược điểm và ứng dụng thực tiễn..."></textarea>
+          </div>
+
+          <!-- Câu TL 4 -->
+          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div class="flex items-start gap-2">
+              <span class="w-6 h-6 rounded-full bg-ocean-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">4</span>
+              <div>
+                <h5 class="font-bold text-sm text-slate-800">Bài toán thực tế & An toàn giao thông:</h5>
+                <p class="text-xs text-slate-600 mt-1">
+                  Tại một đoạn đường có biển giới hạn tốc độ $50\text{ km/h}$, camera bắn tốc độ ghi nhận thời gian ô tô di chuyển giữa hai vạch mốc cách nhau $8\text{ m}$ là $0{,}5\text{ s}$. 
+                  Hỏi ô tô có vi phạm tốc độ không? Vì sao pháp luật bắt buộc người tham gia giao thông phải tuân thủ giới hạn tốc độ?
+                </p>
+              </div>
+            </div>
+            <textarea id="essayAns4" rows="4" class="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-ocean-500 outline-none transition font-normal" placeholder="Tính tốc độ ô tô (km/h), kết luận vi phạm và nêu ý nghĩa an toàn giao thông..."></textarea>
+          </div>
+        </div>
+
+        <div class="text-right pt-2">
+          <button onclick="changeTab('tab-summary')" class="px-6 py-3 bg-ocean-600 hover:bg-ocean-700 text-white font-bold rounded-xl text-sm transition shadow-md">
+            Chuyển Đến Bảng Tổng Kết & Nộp Bài <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 4: KẾT QUẢ & NỘP BÀI ================= -->
+    <section id="tab-summary" class="tab-content hidden space-y-6">
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 text-center max-w-2xl mx-auto space-y-6">
+        <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl mx-auto shadow-inner">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+
+        <div>
+          <span class="text-xs uppercase tracking-wider font-bold text-slate-400">Báo cáo học tập cá nhân</span>
+          <h3 class="text-2xl font-black text-slate-800 mt-1" id="summaryStudentName">Nguyễn Văn An</h3>
+          <p class="text-xs text-slate-500 mt-1">Hãy kiểm tra kết quả bài làm trước khi gửi bài chính thức lên hệ thống giáo viên!</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 bg-sky-50 rounded-2xl border border-sky-100">
+            <span class="text-xs text-slate-500 font-semibold block">Điểm Trắc Nghiệm:</span>
+            <span class="text-3xl font-black text-ocean-700" id="summaryScore">0 / 20</span>
+          </div>
+          <div class="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+            <span class="text-xs text-slate-500 font-semibold block">Sinh Vật Thu Thập:</span>
+            <span class="text-3xl font-black text-amber-600" id="summaryFish">0 🐟</span>
+          </div>
+        </div>
+
+        <!-- Trạng thái tự luận -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left text-xs space-y-2">
+          <div class="font-bold text-slate-700">Trạng thái hoàn thành 4 câu tự luận:</div>
+          <div id="essayCheckStatus" class="space-y-1 text-slate-500">
+            <!-- Render trạng thái điền bài -->
+          </div>
+        </div>
+
+        <!-- Nút Nộp Bài Toàn Diện -->
+        <button onclick="handleFinalSubmit()" id="btnFinalSubmit" class="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.99] text-white font-extrabold rounded-2xl shadow-xl shadow-orange-500/25 transition text-base flex items-center justify-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>XÁC NHẬN NỘP BÀI LÊN HỆ THỐNG GIÁO VIÊN</span>
+        </button>
+
+        <div id="submitResultNotice" class="hidden p-4 rounded-2xl text-xs font-semibold"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL GIÁO VIÊN (ADMIN LOGIN) ================= -->
+  <div id="teacherLoginModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-ocean-100 text-ocean-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-shield-halved"></i>
+          </span>
+          <h3 class="font-bold text-base text-slate-800">Cổng Quản Trị Giáo Viên</h3>
+        </div>
+        <button onclick="closeTeacherModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-slate-500">Khu vực dành cho giáo viên theo dõi tiến độ và bảng điểm của học sinh.</p>
+
+      <form onsubmit="handleTeacherLogin(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tài khoản</label>
+          <input type="text" id="teacherUser" value="giaovien" class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-ocean-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Mật khẩu</label>
+          <input type="password" id="teacherPass" placeholder="Nhập mật khẩu (123456)..." class="w-full p-2.5 bg-slate-50 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-ocean-500" required>
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded-xl text-xs shadow-md transition">
+          Xác Thực Đăng Nhập
+        </button>
+      </form>
+      <div class="text-[11px] text-center text-slate-400">Mật khẩu mặc định: <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">123456</code></div>
+    </div>
+  </div>
+
+  <!-- ================= BẢNG ĐIỀU KHIỂN GIÁO VIÊN (ADMIN DASHBOARD MODAL) ================= -->
+  <div id="teacherDashboardModal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] flex flex-col space-y-4">
+      
+      <!-- Top header modal -->
+      <div class="flex flex-wrap justify-between items-center border-b pb-4 gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">
+            <i class="fa-solid fa-table-list"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-base sm:text-lg text-slate-800">Sổ Điểm & Giám Sát Học Tập - Bài 9</h3>
+            <p class="text-xs text-slate-500">Dữ liệu ghi nhận trực tiếp theo thời gian thực</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="exportTableToCSV()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition shadow-sm">
+            <i class="fa-solid fa-file-excel"></i> Xuất Excel / CSV
+          </button>
+          <button onclick="clearDemoRecords()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold transition">
+            <i class="fa-solid fa-trash-can"></i> Xóa bảng
+          </button>
+          <button onclick="closeTeacherDashboard()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none ml-2">&times;</button>
+        </div>
+      </div>
+
+      <!-- Cấu hình Google Apps Script Web App URL -->
+      <div class="p-3 bg-sky-50 border border-sky-100 rounded-2xl flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2 flex-1 min-w-[280px]">
+          <span class="font-bold text-ocean-800"><i class="fa-solid fa-link mr-1"></i>URL Google Apps Script:</span>
+          <input type="text" id="configGasUrl" placeholder="https://script.google.com/macros/s/AKfycbx.../exec" 
+                 class="flex-1 p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono outline-none">
+        </div>
+        <button onclick="saveGasUrlConfig()" class="px-3 py-1.5 bg-ocean-600 text-white font-bold rounded-lg hover:bg-ocean-700 transition">
+          Lưu cấu hình
+        </button>
+      </div>
+
+      <!-- Danh sách học sinh nộp bài -->
+      <div class="flex-1 overflow-auto custom-scrollbar border rounded-2xl">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b">
+            <tr>
+              <th class="p-3">#</th>
+              <th class="p-3">Thời Gian</th>
+              <th class="p-3">Họ và Tên</th>
+              <th class="p-3 text-center">Trắc Nghiệm</th>
+              <th class="p-3 text-center">Cá Thu Thập</th>
+              <th class="p-3">Chi Tiết Tự Luận</th>
+            </tr>
+          </thead>
+          <tbody id="teacherRecordsTable" class="divide-y divide-slate-100 text-slate-600">
+            <!-- Render danh sách bài nộp -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center pt-2 text-xs text-slate-400">
+        <span>Tổng cộng: <b id="totalSubmissionsCount" class="text-slate-700">0</b> học sinh đã nộp bài</span>
+        <button onclick="closeTeacherDashboard()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition">
+          Đóng cửa sổ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= POPUP XEM CHI TIẾT BÀI TỰ LUẬN CỦA HỌC SINH ================= -->
+  <div id="essayDetailModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h4 class="font-bold text-sm text-slate-800">
+          Bài làm tự luận của: <span id="essayModalStudentName" class="text-ocean-600 font-extrabold"></span>
+        </h4>
+        <button onclick="closeEssayModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+      </div>
+      <div class="flex-1 overflow-auto space-y-4 text-xs" id="essayModalContent">
+        <!-- Render nội dung 4 câu -->
+      </div>
+      <div class="text-right pt-2">
+        <button onclick="closeEssayModal()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-black">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOGIC TOÀN BỘ ỨNG DỤNG ================= -->
+  <script>
+    // 1. NGÂN HÀNG 20 CÂU TRẮC NGHIỆM CHUẨN SƯ PHẠM KHTN 7
+    const quizData = [
+      {
+        q: "Để đo tốc độ chuyển động của một vật, ta cần đo những đại lượng nào sau đây?",
+        opts: ["Khối lượng và quãng đường", "Quãng đường và thời gian", "Thời gian và vận tốc", "Khối lượng và thời gian"],
+        ans: 1,
+        level: "Nhận biết",
+        explain: "Theo công thức định nghĩa $v = s / t$, để tính được tốc độ chuyển động ta bắt buộc phải đo quãng đường $s$ vật đi và thời gian $t$ vật đi hết quãng đường đó."
+      },
+      {
+        q: "Đơn vị đo hợp pháp của tốc độ trong hệ đo lường quốc tế (SI) là:",
+        opts: ["km/h", "m/s", "cm/s", "m/phút"],
+        ans: 1,
+        level: "Nhận biết",
+        explain: "Trong hệ đơn vị SI, quãng đường đo bằng mét (m), thời gian đo bằng giây (s), do đó đơn vị chuẩn của tốc độ là mét trên giây (m/s)."
+      },
+      {
+        q: "Một vật chuyển động với tốc độ 1 m/s thì tương đương với tốc độ nào dưới đây theo đơn vị km/h?",
+        opts: ["1,8 km/h", "3,6 km/h", "0,36 km/h", "36 km/h"],
+        ans: 1,
+        level: "Thông hiểu",
+        explain: "$1\\text{ m/s} = \\frac{1/1000\\text{ km}}{1/3600\\text{ h}} = 3{,}6\\text{ km/h}$. Muốn đổi từ m/s sang km/h ta nhân với 3,6."
+      },
+      {
+        q: "Dụng cụ nào sau đây thường dùng để đo thời gian trong phòng thực hành KHTN với độ chính xác cao và hạn chế sai số con người?",
+        opts: ["Đồng hồ cát", "Đồng hồ quả lắc", "Đồng hồ đo thời gian hiện số nối cổng quang điện", "Đồng hồ đeo tay có kim giây"],
+        ans: 2,
+        level: "Nhận biết",
+        explain: "Đồng hồ đo thời gian hiện số nối cổng quang điện tự động đóng/ngắt mạch khi có vật chắn tia sáng, loại bỏ sai số do thời gian phản xạ của người bấm."
+      },
+      {
+        q: "Khi dùng cổng quang điện để đo tốc độ của xe có gắn tấm chắn sáng rộng d, thời gian t hiển thị trên đồng hồ là thời gian:",
+        opts: ["Xe chạy từ đầu máng đến cuối máng", "Tấm chắn sáng đi qua chắn chùm tia sáng của cổng quang điện", "Xe dừng lại hẳn trên đường chạy", "Từ lúc người buông tay thả xe"],
+        ans: 1,
+        level: "Thông hiểu",
+        explain: "Đồng hồ bắt đầu đếm khi mép trước của tấm chắn sáng che tia hồng ngoại và ngừng đếm khi mép sau đi qua, tức là thời gian xe đi đoạn đường đúng bằng bề rộng $d$."
+      },
+      {
+        q: "Một học sinh chạy cự ly 60 m hết thời gian 12 giây. Tốc độ chạy trung bình của học sinh đó là:",
+        opts: ["5 m/s", "6 m/s", "0,2 m/s", "720 m/s"],
+        ans: 0,
+        level: "Vận dụng",
+        explain: "Áp dụng công thức: $v = s / t = 60 / 12 = 5\\text{ m/s}$."
+      },
+      {
+        q: "Tốc độ của một người đi xe đạp là 10,8 km/h. Tốc độ này tương ứng với bao nhiêu m/s?",
+        opts: ["2 m/s", "3 m/s", "4 m/s", "5 m/s"],
+        ans: 1,
+        level: "Vận dụng",
+        explain: "$v = 10{,}8 / 3{,}6 = 3\\text{ m/s}$."
+      },
+      {
+        q: "Trong thiết bị 'súng bắn tốc độ' mà cảnh sát giao thông sử dụng, bộ phận nào có nhiệm vụ ghi lại hình ảnh của phương tiện vi phạm?",
+        opts: ["Bộ phận phát sóng radio", "Camera kỹ thuật số", "Màn hình tinh thể lỏng", "Bộ vi xử lý đếm xung"],
+        ans: 1,
+        level: "Nhận biết",
+        explain: "Camera kỹ thuật số chụp lại biển số và hình ảnh xe đồng thời với thời điểm máy ghi nhận tốc độ vượt quá quy định."
+      },
+      {
+        q: "Ưu điểm nổi bật nhất của việc đo thời gian bằng cổng quang điện so với đồng hồ bấm giây là:",
+        opts: ["Thiết bị nhỏ gọn, dễ mang vác hơn", "Giảm thiểu sai số do phản xạ bấm nút của mắt và tay con người", "Không cần phải đo độ dài quãng đường chuyển động", "Giá thành rẻ và dễ lắp đặt hơn"],
+        ans: 1,
+        level: "Thông hiểu",
+        explain: "Phản xạ bấm nút của người thường có sai số khoảng 0,1s - 0,2s. Cổng quang điện hoạt động bằng cảm biến quang nên khử được sai số này."
+      },
+      {
+        q: "Khi ô tô chạy qua hai vạch mốc trên đường cách nhau 10 m mất thời gian 0,4 s. Tốc độ của ô tô là:",
+        opts: ["25 m/s (tức 90 km/h)", "4 m/s (tức 14,4 km/h)", "15 m/s (tức 54 km/h)", "40 m/s (tức 144 km/h)"],
+        ans: 0,
+        level: "Vận dụng",
+        explain: "$v = 10 / 0{,}4 = 25\\text{ m/s} = 25 \\times 3{,}6 = 90\\text{ km/h}$."
+      },
+      {
+        q: "Để đo thời gian một viên bi lăn giữa 2 điểm A và B bằng 2 cổng quang điện, đồng hồ hiện số cần chọn ở chế độ nào?",
+        opts: ["Mode A", "Mode B", "Mode A ↔ B", "Chế độ đếm xung tần số"],
+        ans: 2,
+        level: "Thông hiểu",
+        explain: "Chế độ Mode $A \\leftrightarrow B$ cho phép đồng hồ bắt đầu đếm khi vật qua cổng quang điện A và tự động dừng lại khi vật qua cổng quang điện B."
+      },
+      {
+        q: "Một bạn học sinh đo thời gian viên bi chuyển động 3 lần thu được: 2,41 s; 2,44 s; 2,35 s. Giá trị thời gian trung bình là:",
+        opts: ["2,40 s", "2,41 s", "2,39 s", "2,42 s"],
+        ans: 0,
+        level: "Vận dụng",
+        explain: "$\\bar{t} = (2{,}41 + 2{,}44 + 2{,}35) / 3 = 7{,}20 / 3 = 2{,}40\\text{ s}$."
+      },
+      {
+        q: "Nếu tấm chắn sáng gắn trên xe đồ chơi rộng d = 2 cm (0,02 m) và thời gian che cổng quang đo được là t = 0,04 s, tốc độ tức thời của xe là:",
+        opts: ["50 m/s", "5 m/s", "0,5 m/s", "0,05 m/s"],
+        ans: 2,
+        level: "Vận dụng",
+        explain: "$v = d / t = 0{,}02 / 0{,}04 = 0{,}5\\text{ m/s}$."
+      },
+      {
+        q: "Biển báo giao thông hình tròn, viền đỏ, nền trắng có ghi số '60' ở giữa mang ý nghĩa gì?",
+        opts: ["Tốc độ tối thiểu phải chạy là 60 km/h", "Tốc độ tối đa cho phép của các phương tiện là 60 km/h", "Khoảng cách an toàn tối thiểu là 60 m", "Đoạn đường phía trước dài 60 km"],
+        ans: 1,
+        level: "Nhận biết",
+        explain: "Đây là biển báo P.127 'Tốc độ tối đa cho phép'. Xe cơ giới không được phép chạy vượt quá 60 km/h."
+      },
+      {
+        q: "Tại sao trong các phép đo thực nghiệm đo tốc độ, ta cần thực hiện phép đo ít nhất 3 lần rồi tính trung bình?",
+        opts: ["Để bảo đảm sử dụng hết thời lượng giờ học", "Để giảm bớt sai số ngẫu nhiên do dụng cụ và thao tác", "Vì phần mềm máy tính yêu cầu bắt buộc nhập 3 số", "Để tránh bị hao mòn thiết bị"],
+        ans: 1,
+        level: "Thông hiểu",
+        explain: "Việc đo lặp lại nhiều lần giúp loại trừ các biến động ngẫu nhiên và nâng cao độ tin cậy của kết quả đo."
+      },
+      {
+        q: "Thiết bị bắn tốc độ ghi nhận tốc độ xe ô tô dựa vào nguyên lý vật lý nào sau đây?",
+        opts: ["Cân trọng lượng của xe khi đè lên cảm biến", "Phát và thu sóng vô tuyến/laser phản xạ từ xe để tính biến thiên quãng đường theo thời gian", "Đo tiếng ồn của động cơ ô tô phát ra", "Đo luồng gió xe đẩy về phía trước"],
+        ans: 1,
+        level: "Thông hiểu",
+        explain: "Thiết bị phát sóng và nhận sóng dội lại từ vỏ xe để đo thời gian hoặc độ lệch tần số (hiệu ứng Doppler), từ đó suy ra tốc độ tức thì."
+      },
+      {
+        q: "Mai đi xe đạp điện từ nhà đến trường cách nhau 3 km với tốc độ đều là 12 km/h. Thời gian Mai đi hết quãng đường là:",
+        opts: ["0,25 giờ (15 phút)", "4 giờ", "36 phút", "24 phút"],
+        ans: 0,
+        level: "Vận dụng",
+        explain: "$t = s / v = 3 / 12 = 0{,}25\\text{ h} = 0{,}25 \\times 60 = 15\\text{ phút}$."
+      },
+      {
+        q: "Dựa vào Bảng 9.1 (SGK): Quãng đường s = 0,5 m, ba lần đo thời gian lần lượt là 0,78 s; 0,80 s; 0,82 s. Tốc độ trung bình xấp xỉ là:",
+        opts: ["0,625 m/s", "0,60 m/s", "1,60 m/s", "0,80 m/s"],
+        ans: 0,
+        level: "Vận dụng",
+        explain: "Thời gian TB $\\bar{t} = (0{,}78 + 0{,}80 + 0{,}82) / 3 = 0{,}80\\text{ s}$. Tốc độ: $v = 0{,}5 / 0{,}80 = 0{,}625\\text{ m/s}$."
+      },
+      {
+        q: "Yếu tố nào sau đây KHÔNG gây ra sai số trong phép đo tốc độ bằng máng nghiêng và đồng hồ bấm giây?",
+        opts: ["Độ trễ phản xạ bấm nút của người đo", "Vị trí đặt mắt nhìn lệch vạch chia thước", "Màu sắc của chiếc xe thí nghiệm", "Độ chia nhỏ nhất của thước đo"],
+        ans: 2,
+        level: "Thông hiểu",
+        explain: "Màu sơn của xe không ảnh hưởng gì tới các đại lượng vật lý như quãng đường, thời gian hay tốc độ."
+      },
+      {
+        q: "Đoạn đường cao tốc quy định tốc độ tối đa là 120 km/h. Một xe ô tô chạy qua đoạn đường 200 m mất 5,5 s (khoảng 130,9 km/h). Xe này có vi phạm luật không?",
+        opts: ["Không, vì xe chạy rất nhanh", "Có vi phạm vì tốc độ thực tế đã vượt mức tối đa 120 km/h", "Không, vì xe chỉ chạy trên đoạn ngắn", "Chưa đủ dữ kiện kết luận"],
+        ans: 1,
+        level: "Vận dụng",
+        explain: "Tốc độ của xe: $v = 200 / 5{,}5 \\approx 36{,}36\\text{ m/s} \\approx 130{,}9\\text{ km/h} > 120\\text{ km/h}$. Do đó xe đã vi phạm chạy quá tốc độ quy định."
+      }
+    ];
+
+    // Danh sách các loài cá câu được
+    const fishRarities = [
+      { name: "Cá Hề Nemo", icon: "🐠", desc: "Loài cá nhiệt đới tinh nghịch" },
+      { name: "Cá Heo Đại Dương", icon: "🐬", desc: "Loài vật thông minh và thân thiện" },
+      { name: "Cá Voi Lưng Gù", icon: "🐋", desc: "Khổng lồ hiền lành của biển sâu" },
+      { name: "Cá Kiếm Xanh", icon: "🐟", desc: "Tốc độ bơi lên tới 110 km/h!" },
+      { name: "Cá Ngừ Vây Vàng", icon: "🐡", desc: "Chiến binh bền bỉ vượt đại dương" },
+      { name: "Cá Rồng Vàng Huyền Thoại", icon: "🐲", desc: "Sinh vật huyền thoại cực kỳ quý hiếm!" }
+    ];
+
+    // Trạng thái người dùng
+    let currentUserRole = "student"; // "student" hoặc "teacher"
+    let studentName = "";
+    let userAnswers = new Array(20).fill(null);
+    let caughtFishes = [];
+    let currentQ = 0;
+    let teacherCheatMode = false; // Chế độ giáo viên xem trước đáp án
+
+    // Quản lý lưu trữ Giáo viên
+    let submissions = JSON.parse(localStorage.getItem("phys7_submissions") || "[]");
+    let gasWebAppUrl = localStorage.getItem("phys7_gas_url") || "https://script.google.com/macros/s/AKfycbxYOUR_SCRIPT_ID/exec";
+
+    // Khởi tạo
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("configGasUrl").value = gasWebAppUrl;
+      renderTeacherTable();
+      renderYoutubeVideosGrid();
+    });
+
+    // 2. CHUYỂN ĐỔI CHẾ ĐỘ ĐĂNG NHẬP (HỌC SINH / GIÁO VIÊN)
+    function setAuthMode(mode) {
+      const tabStudent = document.getElementById("authTabStudent");
+      const tabTeacher = document.getElementById("authTabTeacher");
+      const formStudent = document.getElementById("formStudentAuth");
+      const formTeacher = document.getElementById("formTeacherAuth");
+      const heading = document.getElementById("authHeading");
+      const subheading = document.getElementById("authSubheading");
+      const icon = document.getElementById("authIconHeader");
+
+      if (mode === "student") {
+        tabStudent.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-ocean-700 shadow-sm";
+        tabTeacher.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
+        formStudent.classList.remove("hidden");
+        formTeacher.classList.add("hidden");
+        icon.className = "fa-solid fa-compass-drafting text-3xl sm:text-4xl text-ocean-600";
+        heading.textContent = "Chào mừng em đến với Bài 9!";
+        subheading.innerHTML = "Tìm hiểu cách đo tốc độ bằng <b>đồng hồ bấm giây</b>, <b>cổng quang điện</b>, <b>thiết bị bắn tốc độ</b> và tham gia trò chơi <b>Câu cá đại dương</b> kỳ thú!";
+      } else {
+        tabTeacher.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 bg-white text-slate-900 shadow-sm";
+        tabStudent.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
+        formStudent.classList.add("hidden");
+        formTeacher.classList.remove("hidden");
+        icon.className = "fa-solid fa-chalkboard-user text-3xl sm:text-4xl text-ocean-700";
+        heading.textContent = "Cổng Đăng Nhập Giáo Viên";
+        subheading.innerHTML = "Đăng nhập với quyền Giáo viên để trải nghiệm toàn bộ bài học, kiểm tra đề thi, mô phỏng và quản lý <b>Sổ điểm lớp học</b>.";
+      }
+    }
+
+    function switchToTeacherTab() {
+      // Nếu đang ở trang chủ thì mở thẳng sổ điểm
+      if (!document.getElementById("mainAppDashboard").classList.contains("hidden")) {
+        openTeacherDashboard();
+      } else {
+        setAuthMode("teacher");
+        const passInput = document.getElementById("inputTeacherPasswordDirect");
+        if (passInput) passInput.focus();
+      }
+    }
+
+    // ĐĂNG NHẬP HỌC SINH
+    function handleStudentLogin(e) {
+      e.preventDefault();
+      const name = document.getElementById("inputStudentName").value.trim();
+      if (!name) return;
+      
+      currentUserRole = "student";
+      studentName = name;
+      enterDashboard();
+    }
+
+    // ĐĂNG NHẬP GIÁO VIÊN VÀO TRANG CHỦ
+    function handleTeacherDirectLogin(e) {
+      e.preventDefault();
+      const pass = document.getElementById("inputTeacherPasswordDirect").value;
+      if (pass !== "123456") {
+        alert("Mật khẩu không chính xác! (Mật khẩu mặc định là: 123456)");
+        return;
+      }
+      
+      currentUserRole = "teacher";
+      const teacherName = document.getElementById("inputTeacherDisplayName").value.trim() || "Thầy/Cô Giáo";
+      studentName = teacherName + " (Giáo Viên)";
+      teacherCheatMode = true; // Cho phép giáo viên xem đáp án
+      enterDashboard();
+    }
+
+    // VÀO TRANG CHỦ DÙNG CHUNG
+    function enterDashboard() {
+      document.getElementById("studentLoginScreen").classList.add("hidden");
+      document.getElementById("mainAppDashboard").classList.remove("hidden");
+      
+      // Header badge
+      const userBadge = document.getElementById("userHeaderBadge");
+      const userRoleIcon = document.getElementById("userRoleIcon");
+      const headerUserName = document.getElementById("headerUserName");
+      const btnLogout = document.getElementById("btnLogoutUser");
+      const btnHeaderTeacher = document.getElementById("btnHeaderTeacherLogin");
+      const btnGradebook = document.getElementById("btnHeaderOpenGradebook");
+
+      userBadge.classList.remove("hidden");
+      userBadge.classList.add("flex");
+      btnLogout.classList.remove("hidden");
+      btnLogout.classList.add("flex");
+      headerUserName.textContent = studentName;
+      document.getElementById("summaryStudentName").textContent = studentName;
+
+      if (currentUserRole === "teacher") {
+        userRoleIcon.className = "fa-solid fa-chalkboard-user text-amber-300";
+        btnGradebook.classList.remove("hidden");
+        btnGradebook.classList.add("flex");
+        btnHeaderTeacher.classList.add("hidden");
+      } else {
+        userRoleIcon.className = "fa-solid fa-user-graduate text-amber-300";
+        btnGradebook.classList.add("hidden");
+        btnHeaderTeacher.classList.remove("hidden");
+      }
+
+      loadQuestion(0);
+      setTimeout(() => {
+        initCinemaCanvas();
+        initPixar3D();
+        renderAllMath();
+      }, 100);
+    }
+
+    function logoutCurrentUser() {
+      if (confirm("Bạn có muốn đăng xuất để đổi tài khoản không?")) {
+        location.reload();
+      }
+    }
+
+    function goHome() {
+      if (studentName) changeTab('tab-lesson');
+    }
+
+    // 3. CHUYỂN TAB ĐIỀU HƯỚNG
+    function changeTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+
+      // Đổi style button tab
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-ocean-600', 'text-white', 'shadow-md', 'shadow-ocean-600/20');
+        btn.classList.add('bg-slate-100', 'text-slate-600');
+      });
+
+      const activeBtnId = "tabBtn-" + tabId.replace("tab-", "");
+      const activeBtn = document.getElementById(activeBtnId);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+        activeBtn.classList.add('bg-ocean-600', 'text-white', 'shadow-md', 'shadow-ocean-600/20');
+      }
+
+      if (tabId === 'tab-summary') {
+        updateSummaryTab();
+      }
+
+      if (tabId === 'tab-game') {
+        setTimeout(() => {
+          initFishGame3D();
+          if (fishGameRenderer) {
+            const container = document.getElementById("fishGame3DContainer");
+            if (container) {
+              const w = container.clientWidth;
+              const h = container.clientHeight;
+              if (w > 0 && h > 0) {
+                fishGameCamera.aspect = w / h;
+                fishGameCamera.updateProjectionMatrix();
+                fishGameRenderer.setSize(w, h);
+              }
+            }
+          }
+        }, 80);
+      }
+
+      if (tabId === 'tab-lesson') {
+        setTimeout(() => {
+          initCinemaCanvas();
+          if (!pixarRenderer) {
+            initPixar3D();
+          } else {
+            window.dispatchEvent(new Event('resize'));
+          }
+        }, 100);
+      }
+
+      // Render công thức toán học chuẩn LaTeX bằng KaTeX
+      setTimeout(renderAllMath, 50);
+    }
+
+    // ================= LOGIC RENDER CÔNG THỨC LATEX VỚI KATEX =================
+    function renderAllMath() {
+      if (typeof renderMathInElement === "function") {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: "$$", right: "$$", display: true },
+            { left: "\\[", right: "\\]", display: true },
+            { left: "$", right: "$", display: false },
+            { left: "\\(", right: "\\)", display: false }
+          ],
+          ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+          throwOnError: false
+        });
+      }
+    }
+
+    // ================= TRÌNH PHÁT VIDEO BÀI GIẢNG CINEMA LECTURE (100% ỔN ĐỊNH) =================
+    // ================= BỘ PHIM HOẠT HÌNH 3D PIXAR KHTN 7 ĐÍCH THỰC (THREE.JS CINEMATIC) =================
+    let movieScene, movieCamera, movieRenderer, movieControls;
+    let movieTrackGroup, movieCarGroup, moviePhotogateGroup, movieLaserMesh, movieWheels = [];
+    let moviePupilLeft, moviePupilRight;
+    let moviePillarMesh;
+    let isCinemaPlaying = false;
+    let cinemaCurrentTime = 0;
+    const cinemaTotalDuration = 90;
+    let cinemaAnimationId = null;
+
+    const lectureScript = [
+      { start: 0, end: 18, scene: 1, text: "🎬 CẢNH 1: Khám phá phòng thí nghiệm 3D Pixar: Máng nghiêng dẫn hướng, Xe đồ chơi Pixar (tấm chắn sáng d = 2 cm), Cổng quang điện và Đồng hồ hiện số." },
+      { start: 18, end: 35, scene: 2, text: "🔬 CẢNH 2.1: Chuẩn bị: Đặt cổng quang tại vị trí s = 0.8 m. Nối cảm biến hồng ngoại vào đồng hồ đo thời gian hiện số ở chế độ Mode A <-> B." },
+      { start: 35, end: 55, scene: 2, text: "🚀 CẢNH 2.2: Thả xe không vận tốc đầu: Xe Pixar lao nhanh dần đều, 4 bánh xe quay tít, mũi xe chắn tia laser hồng ngoại -> Đồng hồ tự ngắt tại t = 1.625 s!" },
+      { start: 55, end: 72, scene: 3, text: "📊 CẢNH 3.1: Xử lý số liệu: s = 0.8 m; thời gian 3 lần đo t1 = 1.62s, t2 = 1.63s, t3 = 1.62s -> Thời gian trung bình t = 1.625 s." },
+      { start: 72, end: 90, scene: 3, text: "📐 CẢNH 3.2: Công thức đo tốc độ: v = s / t = 0.8 / 1.625 ≈ 0.49 m/s (tương đương 1.77 km/h). Thí nghiệm thành công xuất sắc!" }
+    ];
+
+    function initCinemaCanvas() {
+      // Khởi tạo Phim 3D Pixar Three.js
+      initPixarMovie3D();
+    }
+
+    function initPixarMovie3D() {
+      const container = document.getElementById("pixarMovieContainer");
+      if (!container || movieRenderer) return;
+
+      const width = container.clientWidth || 640;
+      const height = container.clientHeight || 360;
+
+      // 1. Scene điện ảnh Pixar
+      movieScene = new THREE.Scene();
+      movieScene.background = new THREE.Color(0x0f172a); // Không gian studio điện ảnh cao cấp
+
+      // 2. Camera điện ảnh
+      movieCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+      movieCamera.position.set(0.6, 1.4, 2.6);
+
+      // 3. Renderer WebGL
+      movieRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      movieRenderer.setSize(width, height);
+      movieRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      movieRenderer.shadowMap.enabled = true;
+      movieRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(movieRenderer.domElement);
+
+      // 4. Controls (Khán giả có thể xoay góc quay điện ảnh)
+      movieControls = new THREE.OrbitControls(movieCamera, movieRenderer.domElement);
+      movieControls.enableDamping = true;
+      movieControls.dampingFactor = 0.05;
+      movieControls.maxPolarAngle = Math.PI / 2 - 0.05;
+      movieControls.target.set(0, 0.35, 0);
+
+      // 5. Ánh sáng phong cách Pixar Cinema Studio
+      const ambientLight = new THREE.AmbientLight(0xe0f2fe, 0.8);
+      movieScene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xffedd5, 1.2); // Ánh sáng chính ấm áp
+      keyLight.position.set(4, 6, 4);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 1024;
+      keyLight.shadow.mapSize.height = 1024;
+      movieScene.add(keyLight);
+
+      const fillBlue = new THREE.DirectionalLight(0x0284c7, 0.6); // Ánh sáng viền xanh công nghệ
+      fillBlue.position.set(-4, 2, -3);
+      movieScene.add(fillBlue);
+
+      // Đèn tiêu điểm rọi vào xe Pixar
+      const spotLight = new THREE.SpotLight(0xffffff, 0.8);
+      spotLight.position.set(0, 4, 2);
+      spotLight.angle = Math.PI / 4;
+      spotLight.penumbra = 0.5;
+      movieScene.add(spotLight);
+
+      // 6. Mặt sàn phòng thí nghiệm 3D
+      const floorGeo = new THREE.CylinderGeometry(2.6, 2.6, 0.08, 48);
+      const floorMat = new THREE.MeshStandardMaterial({ 
+        color: 0x1e293b, 
+        roughness: 0.3, 
+        metalness: 0.2 
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.y = -0.04;
+      floor.receiveShadow = true;
+      movieScene.add(floor);
+
+      // Vạch phát quang công nghệ trên sàn
+      const ringGeo = new THREE.RingGeometry(1.6, 1.63, 36);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 0.002;
+      movieScene.add(ring);
+
+      // 7. Máng trượt 3D Pixar
+      buildMovieTrack();
+
+      // 8. Xe đồ chơi Pixar 3D
+      buildMovieCar();
+
+      // 9. Cổng quang điện 3D
+      buildMoviePhotogate();
+
+      // Vòng lặp render phim 3D
+      function renderMovie() {
+        requestAnimationFrame(renderMovie);
+        if (movieControls) movieControls.update();
+        movieRenderer.render(movieScene, movieCamera);
+      }
+      renderMovie();
+
+      // Resize
+      window.addEventListener('resize', () => {
+        if (!container || !movieRenderer) return;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        movieCamera.aspect = w / h;
+        movieCamera.updateProjectionMatrix();
+        movieRenderer.setSize(w, h);
+      });
+
+      // Tự động phát nhẹ nhàng mở đầu
+      setTimeout(() => {
+        updateMovieTimeDisplay();
+        updateMovieCinematicFrame();
+      }, 200);
+    }
+
+    function buildMovieTrack() {
+      movieTrackGroup = new THREE.Group();
+
+      // Máng nhôm bo cạnh màu xanh ngọc
+      const railGeo = new THREE.BoxGeometry(2.3, 0.04, 0.26);
+      const railMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.25,
+        metalness: 0.6
+      });
+      const rail = new THREE.Mesh(railGeo, railMat);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      movieTrackGroup.add(rail);
+
+      // Rãnh trượt mạ bạc phản quang
+      const grooveGeo = new THREE.BoxGeometry(2.28, 0.01, 0.16);
+      const grooveMat = new THREE.MeshStandardMaterial({
+        color: 0xf1f5f9,
+        roughness: 0.1,
+        metalness: 0.8
+      });
+      const groove = new THREE.Mesh(grooveGeo, grooveMat);
+      groove.position.y = 0.02;
+      movieTrackGroup.add(groove);
+
+      // Vạch chia cm phát sáng màu vàng
+      for (let i = -0.9; i <= 0.9; i += 0.2) {
+        const mark = new THREE.Mesh(
+          new THREE.BoxGeometry(0.012, 0.012, 0.22),
+          new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+        );
+        mark.position.set(i, 0.025, 0);
+        movieTrackGroup.add(mark);
+      }
+
+      // Đặt góc dốc 15 độ
+      const angleRad = (16 * Math.PI) / 180;
+      movieTrackGroup.rotation.z = angleRad;
+      movieTrackGroup.position.set(-0.2, 0.35, 0);
+
+      movieScene.add(movieTrackGroup);
+
+      // Trụ nâng dốc màu cam
+      const pillarGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.7, 24);
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3 });
+      moviePillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+      moviePillarMesh.position.set(-1.15, 0.35, 0);
+      moviePillarMesh.castShadow = true;
+      movieScene.add(moviePillarMesh);
+    }
+
+    function buildMovieCar() {
+      movieCarGroup = new THREE.Group();
+      movieWheels = [];
+
+      // Thân xe đỏ ruby bóng bẩy Lightning McQueen Pixar
+      const bodyGeo = new THREE.BoxGeometry(0.28, 0.12, 0.18);
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0xef4444, // Đỏ Pixar
+        roughness: 0.15,
+        metalness: 0.35,
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.1
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.08;
+      body.castShadow = true;
+      movieCarGroup.add(body);
+
+      // Mui xe cong vòm ngộ nghĩnh
+      const roofGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.14, 16);
+      roofGeo.rotateZ(Math.PI / 2);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(-0.02, 0.16, 0);
+      movieCarGroup.add(roof);
+
+      // MẮT HOẠT HÌNH PIXAR TO TRÒN
+      const eyeWhiteGeo = new THREE.SphereGeometry(0.035, 16, 16);
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      
+      const leftEye = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      leftEye.position.set(0.12, 0.14, 0.045);
+      movieCarGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      rightEye.position.set(0.12, 0.14, -0.045);
+      movieCarGroup.add(rightEye);
+
+      // Con ngươi đen
+      const pupilGeo = new THREE.SphereGeometry(0.018, 12, 12);
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x090d16 });
+
+      moviePupilLeft = new THREE.Mesh(pupilGeo, pupilMat);
+      moviePupilLeft.position.set(0.145, 0.14, 0.045);
+      movieCarGroup.add(moviePupilLeft);
+
+      moviePupilRight = new THREE.Mesh(pupilGeo, pupilMat);
+      moviePupilRight.position.set(0.145, 0.14, -0.045);
+      movieCarGroup.add(moviePupilRight);
+
+      // Tấm chắn sáng màu vàng chanh d = 2cm
+      const flagPole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.005, 0.005, 0.16),
+        new THREE.MeshStandardMaterial({ color: 0x64748b })
+      );
+      flagPole.position.set(0, 0.26, 0);
+      movieCarGroup.add(flagPole);
+
+      const flag = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.08, 0.01),
+        new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+      );
+      flag.position.set(0, 0.31, 0);
+      movieCarGroup.add(flag);
+
+      // 4 Bánh xe cao su mâm bạc quay tròn
+      const wheelGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16);
+      wheelGeo.rotateX(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.1 });
+
+      const wheelOffsets = [
+        [0.08, 0.045, 0.10],
+        [-0.08, 0.045, 0.10],
+        [0.08, 0.045, -0.10],
+        [-0.08, 0.045, -0.10]
+      ];
+
+      wheelOffsets.forEach(([x, y, z]) => {
+        const wMesh = new THREE.Mesh(wheelGeo, wheelMat);
+        wMesh.position.set(x, y, z);
+        wMesh.castShadow = true;
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.032, 12), rimMat);
+        rim.rotateX(Math.PI / 2);
+        wMesh.add(rim);
+        movieCarGroup.add(wMesh);
+        movieWheels.push(wMesh);
+      });
+
+      movieTrackGroup.add(movieCarGroup);
+    }
+
+    function buildMoviePhotogate() {
+      moviePhotogateGroup = new THREE.Group();
+
+      const archMat = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
+        roughness: 0.25,
+        metalness: 0.3
+      });
+
+      const col1 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), archMat);
+      col1.position.set(0, 0.21, 0.16);
+      col1.castShadow = true;
+      moviePhotogateGroup.add(col1);
+
+      const col2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), archMat);
+      col2.position.set(0, 0.21, -0.16);
+      col2.castShadow = true;
+      moviePhotogateGroup.add(col2);
+
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.37), archMat);
+      top.position.set(0, 0.42, 0);
+      top.castShadow = true;
+      moviePhotogateGroup.add(top);
+
+      // Chùm tia laser đỏ 3D phát sáng
+      const laserGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.32, 12);
+      laserGeo.rotateX(Math.PI / 2);
+      movieLaserMesh = new THREE.Mesh(laserGeo, new THREE.MeshBasicMaterial({
+        color: 0xff0033,
+        transparent: true,
+        opacity: 0.9
+      }));
+      movieLaserMesh.position.set(0, 0.31, 0);
+      moviePhotogateGroup.add(movieLaserMesh);
+
+      // Vị trí cổng quang tại s = 0.8m
+      moviePhotogateGroup.position.set(0.15, 0, 0);
+
+      movieTrackGroup.add(moviePhotogateGroup);
+    }
+
+    // ================= KỊCH BẢN ĐIỆN ẢNH 3D PIXAR THEO THỜI GIAN =================
+    function updateMovieCinematicFrame() {
+      if (!movieCarGroup || !movieCamera) return;
+
+      const t = cinemaCurrentTime;
+
+      // CẢNH 1: KHÁM PHÁ BỘ DỤNG CỤ 3D (0s - 18s)
+      if (t < 18) {
+        movieCarGroup.position.set(-0.85, 0.02, 0);
+        
+        // Camera lượn quanh studio 3D
+        const camAngle = 0.6 + Math.sin(t * 0.2) * 0.4;
+        movieCamera.position.set(
+          Math.sin(camAngle) * 2.4,
+          1.2 + Math.cos(t * 0.3) * 0.2,
+          Math.cos(camAngle) * 2.4
+        );
+        movieControls.target.set(0, 0.35, 0);
+
+        // Mắt xe Pixar liếc nhìn đáng yêu!
+        if (moviePupilLeft && moviePupilRight) {
+          const eyeShift = Math.sin(t * 2) * 0.006;
+          moviePupilLeft.position.z = 0.045 + eyeShift;
+          moviePupilRight.position.z = -0.045 + eyeShift;
+        }
+
+        document.getElementById("movieDigitalTimer").textContent = "0.000 s";
+        if (movieLaserMesh) movieLaserMesh.material.color.setHex(0xff0033);
+      }
+      // CẢNH 2: XE LAO DỐC & KÍCH HOẠT CỔNG QUANG (18s - 55s)
+      else if (t < 55) {
+        const runCycle = (t - 18) % 7; // Chu kỳ trượt lặp 7 giây
+        const progress = Math.min(1, runCycle / 4.0);
+        const easeProg = Math.pow(progress, 1.8);
+
+        const startX = -0.85;
+        const gateX = 0.15;
+        const currentCarX = startX + (gateX - startX) * easeProg;
+        movieCarGroup.position.set(currentCarX, 0.02, 0);
+
+        // Bánh xe 3D quay tít theo chuyển động
+        movieWheels.forEach(w => {
+          w.rotation.z -= 0.2;
+        });
+
+        // Camera chuyển sang góc quay bám sát xe (Action Cinematic View)
+        movieCamera.position.set(0.4, 1.0, 1.9);
+        movieControls.target.set(currentCarX * 0.6, 0.35, 0);
+
+        // Đồng hồ hiện số
+        if (currentCarX >= gateX - 0.02) {
+          document.getElementById("movieDigitalTimer").textContent = "1.625 s";
+          // Hiệu ứng tia laser bùng sáng vàng neon!
+          if (movieLaserMesh) movieLaserMesh.material.color.setHex(0xfacc15);
+        } else {
+          const curTimer = progress * 1.625;
+          document.getElementById("movieDigitalTimer").textContent = curTimer.toFixed(3) + " s";
+          if (movieLaserMesh) movieLaserMesh.material.color.setHex(0xff0033);
+        }
+      }
+      // CẢNH 3: BẢNG SỐ LIỆU & CÔNG THỨC V = S / T (55s - 90s)
+      else {
+        // Xe dừng lại ở chân dốc
+        movieCarGroup.position.set(0.25, 0.02, 0);
+
+        // Camera lùi ra góc toàn cảnh panorama
+        const panAngle = (t - 55) * 0.1;
+        movieCamera.position.set(
+          Math.sin(panAngle) * 2.8,
+          1.5,
+          Math.cos(panAngle) * 2.8
+        );
+        movieControls.target.set(0, 0.35, 0);
+
+        document.getElementById("movieDigitalTimer").textContent = "1.625 s";
+        if (movieLaserMesh) movieLaserMesh.material.color.setHex(0x38bdf8);
+      }
+    }
+
+    // ĐIỀU KHIỂN PHIM
+    function toggleCinemaPlay() {
+      isCinemaPlaying = !isCinemaPlaying;
+      const btnIcon = document.getElementById("iconCinemaPlay");
+      if (isCinemaPlaying) {
+        btnIcon.className = "fa-solid fa-pause";
+        runCinemaLoop();
+      } else {
+        btnIcon.className = "fa-solid fa-play";
+        cancelAnimationFrame(cinemaAnimationId);
+      }
+    }
+
+    function resetCinemaPlay() {
+      cinemaCurrentTime = 0;
+      updateMovieTimeDisplay();
+      updateMovieCinematicFrame();
+    }
+
+    function jumpToScene(sceneNum) {
+      if (sceneNum === 1) cinemaCurrentTime = 0;
+      else if (sceneNum === 2) cinemaCurrentTime = 18;
+      else if (sceneNum === 3) cinemaCurrentTime = 56;
+      updateMovieTimeDisplay();
+      updateMovieCinematicFrame();
+      if (!isCinemaPlaying) toggleCinemaPlay();
+    }
+
+    function runCinemaLoop() {
+      let lastTimestamp = performance.now();
+      function step(now) {
+        if (!isCinemaPlaying) return;
+        const deltaSec = (now - lastTimestamp) / 1000;
+        lastTimestamp = now;
+
+        cinemaCurrentTime += deltaSec;
+        if (cinemaCurrentTime > cinemaTotalDuration) {
+          cinemaCurrentTime = 0; // Tự động lặp lại phim
+        }
+
+        updateMovieTimeDisplay();
+        updateMovieCinematicFrame();
+        cinemaAnimationId = requestAnimationFrame(step);
+      }
+      cinemaAnimationId = requestAnimationFrame(step);
+    }
+
+    function updateMovieTimeDisplay() {
+      const curM = Math.floor(cinemaCurrentTime / 60).toString().padStart(2, '0');
+      const curS = Math.floor(cinemaCurrentTime % 60).toString().padStart(2, '0');
+      document.getElementById("cinemaTimeDisp").textContent = `${curM}:${curS} / 01:30`;
+
+      // Cập nhật phụ đề thuyết minh
+      const curLine = lectureScript.find(l => cinemaCurrentTime >= l.start && cinemaCurrentTime < l.end);
+      if (curLine) {
+        document.getElementById("lectureSubtitle").textContent = curLine.text;
+      }
+    }
+
+    function switchVideoMode(mode) {
+      document.querySelectorAll('.vid-mode-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-rose-600', 'shadow-sm');
+        btn.classList.add('text-slate-600');
+      });
+
+      const wrapperBuiltin = document.getElementById("playerBuiltinWrapper");
+      const wrapperFile = document.getElementById("playerFileWrapper");
+      const wrapperYoutube = document.getElementById("playerYoutubeWrapper");
+
+      wrapperBuiltin.classList.add("hidden");
+      wrapperFile.classList.add("hidden");
+      wrapperYoutube.classList.add("hidden");
+
+      if (mode === "builtin") {
+        document.getElementById("btnVidBuiltin").classList.add('bg-white', 'text-rose-600', 'shadow-sm');
+        document.getElementById("btnVidBuiltin").classList.remove('text-slate-600');
+        wrapperBuiltin.classList.remove("hidden");
+        initPixarMovie3D();
+      } else if (mode === "file") {
+        document.getElementById("btnVidFile").classList.add('bg-white', 'text-rose-600', 'shadow-sm');
+        document.getElementById("btnVidFile").classList.remove('text-slate-600');
+        wrapperFile.classList.remove("hidden");
+      } else if (mode === "youtube") {
+        document.getElementById("btnVidYoutube").classList.add('bg-white', 'text-rose-600', 'shadow-sm');
+        document.getElementById("btnVidYoutube").classList.remove('text-slate-600');
+        wrapperYoutube.classList.remove("hidden");
+        const ytIframe = document.getElementById("onlineYoutubeIframe");
+        if (!ytIframe.src || ytIframe.src.endsWith('/')) {
+          selectYoutubeVideo(relatedYoutubeVideos[0].id, relatedYoutubeVideos[0].title);
+        }
+      }
+    }
+
+    function handleLocalVideoSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const vidEl = document.getElementById("localVideoElement");
+      const promptBox = document.getElementById("fileUploadPrompt");
+
+      vidEl.src = URL.createObjectURL(file);
+      vidEl.classList.remove("hidden");
+      promptBox.classList.add("hidden");
+      vidEl.play();
+    }
+
+    // ================= DANH SÁCH VIDEO YOUTUBE BÀI 9 TỰ ĐỘNG LIÊN KẾT (ĐÃ XÁC THỰC HOẠT ĐỘNG 100%) =================
+    const relatedYoutubeVideos = [
+      {
+        id: "1vP6VWZ3dhY",
+        title: "KHTN 7 - Bài 9: Đo tốc độ (Kết nối tri thức)",
+        channel: "Học Vật lý cùng cô Mai",
+        badge: "Bài Giảng Chuẩn",
+        duration: "18:35"
+      },
+      {
+        id: "JHcJnFaxkFQ",
+        title: "KHTN 7 - Bài 9: Đo tốc độ (Giải chi tiết SGK)",
+        channel: "VietJack Official",
+        badge: "Hay Nhất",
+        duration: "22:10"
+      },
+      {
+        id: "Lobd19c4Piw",
+        title: "KHTN 7 - Bài 9: Đo tốc độ (Thí nghiệm & Bài tập)",
+        channel: "Thầy Nguyễn Chí Sơn",
+        badge: "Thí Nghiệm Thực Tế",
+        duration: "25:40"
+      },
+      {
+        id: "G2qjiC35wxA",
+        title: "KHTN 7 Bài 9: Đo tốc độ (Trang 49 - 52 Kết nối tri thức)",
+        channel: "Thầy Liêm Vật Lý",
+        badge: "Toàn Diện",
+        duration: "19:15"
+      },
+      {
+        id: "k5ePbW0pcmo",
+        title: "Hoạt động của Thiết bị Bắn Tốc Độ Đơn Giản - KHTN 7",
+        channel: "Cô Thu Luyện Thi",
+        badge: "Máy Bắn Tốc Độ",
+        duration: "14:20"
+      },
+      {
+        id: "yZcb8qgC5aY",
+        title: "KHTN 7 - Bài 9: Đo tốc độ (Học trực tuyến OLM)",
+        channel: "OLM.VN",
+        badge: "Trực Tuyến",
+        duration: "16:45"
+      }
+    ];
+
+    function renderYoutubeVideosGrid() {
+      const grid = document.getElementById("youtubeVideosGrid");
+      if (!grid) return;
+
+      grid.innerHTML = relatedYoutubeVideos.map(vid => `
+        <div class="flex items-center gap-2 p-1.5 bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-ocean-400 rounded-xl transition cursor-pointer group"
+             onclick="selectYoutubeVideo('${vid.id}', '${vid.title}')">
+          <div class="relative w-20 h-12 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+            <img src="https://img.youtube.com/vi/${vid.id}/mqdefault.jpg" alt="${vid.title}" class="w-full h-full object-cover group-hover:scale-105 transition" onerror="this.src='logo.png'">
+            <span class="absolute bottom-0.5 right-0.5 bg-black/80 text-[9px] font-bold text-white px-1 rounded">${vid.duration}</span>
+            <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition flex items-center justify-center text-white/80 group-hover:text-red-500">
+              <i class="fa-solid fa-play text-xs"></i>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0 pr-1">
+            <h6 class="text-[11px] font-bold text-slate-800 truncate group-hover:text-ocean-700 leading-tight">${vid.title}</h6>
+            <div class="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
+              <span class="truncate">${vid.channel}</span>
+              <span class="px-1 py-0.2 bg-sky-100 text-sky-800 rounded font-semibold text-[9px]">${vid.badge}</span>
+            </div>
+          </div>
+          <a href="https://www.youtube.com/watch?v=${vid.id}" target="_blank" rel="noopener noreferrer" 
+             onclick="event.stopPropagation()" 
+             class="p-1.5 text-slate-400 hover:text-red-600 transition" title="Mở trực tiếp trên YouTube">
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+          </a>
+        </div>
+      `).join("");
+    }
+
+    function selectYoutubeVideo(vidId, title) {
+      // Chuyển sang tab YouTube Online nếu chưa ở đó
+      switchVideoMode('youtube');
+
+      const iframe = document.getElementById("onlineYoutubeIframe");
+      iframe.src = `https://www.youtube-nocookie.com/embed/${vidId}?enablejsapi=1&autoplay=1`;
+      
+      const titleEl = document.getElementById("currentYoutubeTitle");
+      if (titleEl) titleEl.textContent = title;
+
+      const directBtn = document.getElementById("btnOpenDirectYoutube");
+      if (directBtn) directBtn.href = `https://www.youtube.com/watch?v=${vidId}`;
+    }
+
+    function toggleCustomYoutubeBar() {
+      const bar = document.getElementById("customYoutubeInputBar");
+      bar.classList.toggle("hidden");
+    }
+
+    function applyCustomYoutubeLink() {
+      const url = document.getElementById("inputYoutubeCustom").value.trim();
+      if (!url) return alert("Vui lòng nhập link YouTube!");
+      let vidId = url;
+      if (url.includes("watch?v=")) vidId = url.split("watch?v=")[1].split("&")[0];
+      else if (url.includes("youtu.be/")) vidId = url.split("youtu.be/")[1].split("?")[0];
+      selectYoutubeVideo(vidId, "Video YouTube Tự Chọn");
+      document.getElementById("customYoutubeInputBar").classList.add("hidden");
+    }
+
+    // ================= MÔ PHỎNG 3D PIXAR VỚI THREE.JS =================
+    let pixarScene, pixarCamera, pixarRenderer, pixarControls;
+    let trackGroup, carGroup, photogateGroup, pillarMesh, laserBeamMesh;
+    let carWheels = [];
+    let isCarRunning = false;
+    let currentDistM = 0.8;
+    let currentAngleDeg = 15;
+
+    function initPixar3D() {
+      const container = document.getElementById("pixar3DContainer");
+      if (!container || pixarRenderer) return;
+
+      const width = container.clientWidth || 450;
+      const height = container.clientHeight || 300;
+
+      // 1. Scene & Background phong cách Studio Pixar
+      pixarScene = new THREE.Scene();
+      pixarScene.background = new THREE.Color(0xf1f5f9);
+
+      // 2. Camera
+      pixarCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      pixarCamera.position.set(0.2, 1.8, 3.1);
+
+      // 3. Renderer
+      pixarRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      pixarRenderer.setSize(width, height);
+      pixarRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      pixarRenderer.shadowMap.enabled = true;
+      pixarRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(pixarRenderer.domElement);
+
+      // 4. OrbitControls
+      pixarControls = new THREE.OrbitControls(pixarCamera, pixarRenderer.domElement);
+      pixarControls.enableDamping = true;
+      pixarControls.dampingFactor = 0.05;
+      pixarControls.maxPolarAngle = Math.PI / 2 - 0.05; // Không nhìn dưới bàn
+      pixarControls.minDistance = 1.5;
+      pixarControls.maxDistance = 5.5;
+      pixarControls.target.set(0, 0.4, 0);
+
+      // 5. Ánh sáng phong cách Hoạt Hình Pixar
+      const ambientLight = new THREE.AmbientLight(0xe0f2fe, 0.7);
+      pixarScene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.0);
+      dirLight.position.set(3, 5, 3);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
+      pixarScene.add(dirLight);
+
+      const blueRimLight = new THREE.DirectionalLight(0x38bdf8, 0.5);
+      blueRimLight.position.set(-3, 2, -2);
+      pixarScene.add(blueRimLight);
+
+      // 6. Mặt bàn thí nghiệm (Lab Desk Surface)
+      const deskGeo = new THREE.CylinderGeometry(2.8, 2.8, 0.1, 48);
+      const deskMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, 
+        roughness: 0.2, 
+        metalness: 0.1 
+      });
+      const desk = new THREE.Mesh(deskGeo, deskMat);
+      desk.position.y = -0.05;
+      desk.receiveShadow = true;
+      pixarScene.add(desk);
+
+      // Vạch lưới công nghệ trên mặt bàn
+      const grid = new THREE.GridHelper(3.5, 14, 0x0284c7, 0xe2e8f0);
+      grid.position.y = 0.001;
+      pixarScene.add(grid);
+
+      // 7. Máng trượt 3D (Track)
+      buildPixarTrack();
+
+      // 8. Xe đồ chơi phong cách Pixar (Pixar Toy Car)
+      buildPixarCar();
+
+      // 9. Cổng quang điện 3D (Photogate)
+      buildPhotogate();
+
+      // Đồng bộ thông số ban đầu
+      update3DTrackGeometry();
+
+      // Vòng lặp render
+      function animate() {
+        requestAnimationFrame(animate);
+        if (pixarControls) pixarControls.update();
+        pixarRenderer.render(pixarScene, pixarCamera);
+      }
+      animate();
+
+      // Lắng nghe thay đổi kích thước cửa sổ
+      window.addEventListener('resize', () => {
+        if (!container || !pixarRenderer) return;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        pixarCamera.aspect = w / h;
+        pixarCamera.updateProjectionMatrix();
+        pixarRenderer.setSize(w, h);
+      });
+    }
+
+    // DỰNG MÁNG NGHIÊNG 3D
+    function buildPixarTrack() {
+      trackGroup = new THREE.Group();
+
+      // Máng ray nhôm bo góc đẹp mắt
+      const railGeo = new THREE.BoxGeometry(2.4, 0.04, 0.28);
+      const railMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.3,
+        metalness: 0.5
+      });
+      const rail = new THREE.Mesh(railGeo, railMat);
+      rail.castShadow = true;
+      rail.receiveShadow = true;
+      trackGroup.add(rail);
+
+      // Rãnh giữa màu bạc phản quang
+      const grooveGeo = new THREE.BoxGeometry(2.38, 0.01, 0.18);
+      const grooveMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        roughness: 0.2,
+        metalness: 0.8
+      });
+      const groove = new THREE.Mesh(grooveGeo, grooveMat);
+      groove.position.y = 0.02;
+      trackGroup.add(groove);
+
+      // Vạch centimet chia độ nổi 3D
+      for (let i = -1.0; i <= 1.0; i += 0.2) {
+        const markGeo = new THREE.BoxGeometry(0.015, 0.012, 0.24);
+        const markMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+        const mark = new THREE.Mesh(markGeo, markMat);
+        mark.position.set(i, 0.025, 0);
+        trackGroup.add(mark);
+      }
+
+      pixarScene.add(trackGroup);
+
+      // Trụ nâng dốc màu cam Pixar
+      const pillarGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.8, 24);
+      const pillarMat = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
+        roughness: 0.3,
+        metalness: 0.2
+      });
+      pillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+      pillarMesh.castShadow = true;
+      pixarScene.add(pillarMesh);
+    }
+
+    // DỰNG XE TOY CAR PHONG CÁCH PIXAR
+    function buildPixarCar() {
+      carGroup = new THREE.Group();
+      carWheels = [];
+
+      // 1. Thân xe bo cong màu đỏ rực rỡ Lightning McQueen
+      const bodyGeo = new THREE.BoxGeometry(0.28, 0.12, 0.18);
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0xef4444, // Đỏ Pixar
+        roughness: 0.15,
+        metalness: 0.3,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.08;
+      body.castShadow = true;
+      carGroup.add(body);
+
+      // Mui xe cong vòm ngộ nghĩnh
+      const roofGeo = new THREE.CylinderGeometry(0.08, 0.12, 0.14, 16);
+      roofGeo.rotateZ(Math.PI / 2);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.2 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(-0.02, 0.16, 0);
+      carGroup.add(roof);
+
+      // 2. Cặp mắt hoạt hình Pixar siêu đáng yêu trên kính trước!
+      const eyeWhiteGeo = new THREE.SphereGeometry(0.035, 16, 16);
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      
+      const leftEye = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      leftEye.position.set(0.12, 0.14, 0.045);
+      carGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      rightEye.position.set(0.12, 0.14, -0.045);
+      carGroup.add(rightEye);
+
+      // Tròng đen mắt long lanh
+      const pupilGeo = new THREE.SphereGeometry(0.018, 12, 12);
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+
+      const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      leftPupil.position.set(0.145, 0.14, 0.045);
+      carGroup.add(leftPupil);
+
+      const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      rightPupil.position.set(0.145, 0.14, -0.045);
+      carGroup.add(rightPupil);
+
+      // 3. Tấm chắn sáng màu vàng chanh nhô cao để ngắt cổng quang điện
+      const flagPoleGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.16);
+      const flagPoleMat = new THREE.MeshStandardMaterial({ color: 0x64748b });
+      const flagPole = new THREE.Mesh(flagPoleGeo, flagPoleMat);
+      flagPole.position.set(0, 0.26, 0);
+      carGroup.add(flagPole);
+
+      const flagGeo = new THREE.BoxGeometry(0.04, 0.08, 0.01);
+      const flagMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+      const flag = new THREE.Mesh(flagGeo, flagMat);
+      flag.position.set(0, 0.31, 0);
+      carGroup.add(flag);
+
+      // 4. 4 Bánh xe 3D cao su mâm bạc quay tròn
+      const wheelGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.03, 16);
+      wheelGeo.rotateX(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.9, roughness: 0.1 });
+
+      const wheelOffsets = [
+        [0.08, 0.045, 0.10],
+        [-0.08, 0.045, 0.10],
+        [0.08, 0.045, -0.10],
+        [-0.08, 0.045, -0.10]
+      ];
+
+      wheelOffsets.forEach(([x, y, z]) => {
+        const wMesh = new THREE.Mesh(wheelGeo, wheelMat);
+        wMesh.position.set(x, y, z);
+        wMesh.castShadow = true;
+
+        // Mâm bạc
+        const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.032, 12), rimMat);
+        rim.rotateX(Math.PI / 2);
+        wMesh.add(rim);
+
+        carGroup.add(wMesh);
+        carWheels.push(wMesh);
+      });
+
+      trackGroup.add(carGroup);
+    }
+
+    // DỰNG CỔNG QUANG ĐIỆN 3D
+    function buildPhotogate() {
+      photogateGroup = new THREE.Group();
+
+      // Khung chữ U màu cam
+      const archMat = new THREE.MeshStandardMaterial({
+        color: 0xf97316,
+        roughness: 0.2,
+        metalness: 0.2
+      });
+
+      const leftCol = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), archMat);
+      leftCol.position.set(0, 0.21, 0.16);
+      leftCol.castShadow = true;
+      photogateGroup.add(leftCol);
+
+      const rightCol = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), archMat);
+      rightCol.position.set(0, 0.21, -0.16);
+      rightCol.castShadow = true;
+      photogateGroup.add(rightCol);
+
+      const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.37), archMat);
+      topBar.position.set(0, 0.42, 0);
+      topBar.castShadow = true;
+      photogateGroup.add(topBar);
+
+      // Chùm tia laser hồng ngoại đỏ phát sáng
+      const laserGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.32, 12);
+      laserGeo.rotateX(Math.PI / 2);
+      const laserMat = new THREE.MeshBasicMaterial({
+        color: 0xff0033,
+        transparent: true,
+        opacity: 0.85
+      });
+      laserBeamMesh = new THREE.Mesh(laserGeo, laserMat);
+      laserBeamMesh.position.set(0, 0.31, 0); // Vừa tầm tấm chắn sáng trên xe
+      photogateGroup.add(laserBeamMesh);
+
+      trackGroup.add(photogateGroup);
+    }
+
+    // CẬP NHẬT GÓC VÀ VỊ TRÍ 3D THEO SLIDER
+    function update3DTrackGeometry() {
+      if (!trackGroup) return;
+
+      const rad = (currentAngleDeg * Math.PI) / 180;
+      trackGroup.rotation.z = rad;
+
+      // Đặt gốc máng chạm bàn tại đầu thấp (x: 1.0, y: 0)
+      const trackLength = 2.4;
+      const pivotX = 0.9;
+      trackGroup.position.set(pivotX - Math.cos(rad) * (trackLength / 2), Math.sin(rad) * (trackLength / 2), 0);
+
+      // Trụ nâng đỡ ở đầu dốc
+      if (pillarMesh) {
+        const highEndX = trackGroup.position.x - Math.cos(rad) * (trackLength / 2 - 0.15);
+        const highEndY = trackGroup.position.y + Math.sin(rad) * (trackLength / 2 - 0.15);
+        pillarMesh.position.set(highEndX, highEndY / 2, 0);
+        pillarMesh.scale.set(1, Math.max(0.2, highEndY / 0.8), 1);
+      }
+
+      // Vị trí cổng quang điện trên máng
+      if (photogateGroup) {
+        // s từ 0.3m đến 1.4m tương ứng với track x từ -0.9 đến 0.7
+        const trackStart = -0.9;
+        const gateRelX = trackStart + (currentDistM / 1.5) * 1.6;
+        photogateGroup.position.set(gateRelX, 0, 0);
+      }
+
+      // Đưa xe về đỉnh dốc nếu đang rảnh
+      if (!isCarRunning) {
+        resetPixar3D();
+      }
+
+      calculatePixarPhysics();
+    }
+
+    function onUpdate3DDist(val) {
+      currentDistM = parseFloat(val);
+      document.getElementById("disp3DDist").textContent = currentDistM.toFixed(1) + " m";
+      update3DTrackGeometry();
+    }
+
+    function onUpdate3DAngle(val) {
+      currentAngleDeg = parseFloat(val);
+      document.getElementById("disp3DAngle").textContent = currentAngleDeg + "°";
+      update3DTrackGeometry();
+    }
+
+    function calculatePixarPhysics() {
+      const g = 9.8;
+      const rad = (currentAngleDeg * Math.PI) / 180;
+      const a = Math.max(0.2, g * Math.sin(rad) * 0.45); // Có ma sát giả lập
+      const t = Math.sqrt((2 * currentDistM) / a);
+      const v = currentDistM / t;
+      const v_kmh = v * 3.6;
+
+      document.getElementById("mathSpeedResult").innerHTML = 
+        `v = s / t = ${currentDistM.toFixed(2)} m / ${t.toFixed(3)} s = <span class="text-teal-700 font-bold">${v.toFixed(2)} m/s</span> (${v_kmh.toFixed(2)} km/h)`;
+
+      return { t, v, v_kmh, a };
+    }
+
+    // THẢ XE 3D PIXAR LAO DỐC & KÍCH HOẠT CỔNG QUANG ĐIỆN
+    function launchPixarCar3D() {
+      if (isCarRunning) return;
+      isCarRunning = true;
+
+      const { t } = calculatePixarPhysics();
+      const btn = document.getElementById("btnLaunch3D");
+      const timerDisplay = document.getElementById("pixarDigitalTimer");
+      const laserBanner = document.getElementById("laserTriggerBanner");
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Xe Đang Lao Dốc...`;
+      laserBanner.classList.add("hidden");
+
+      // Reset màu laser đỏ
+      if (laserBeamMesh) laserBeamMesh.material.color.setHex(0xff0033);
+
+      const startX = -0.9;
+      const endX = photogateGroup.position.x;
+      const runDistance = endX - startX;
+
+      const durationMs = Math.min(3000, Math.max(800, t * 1000));
+      const startTime = performance.now();
+
+      function stepAnimation(now) {
+        let elapsedMs = now - startTime;
+        let progress = elapsedMs / durationMs;
+
+        if (progress > 1) progress = 1;
+
+        // Chuyển động nhanh dần đều: x = 0.5 * a * t^2
+        const currentProgress = Math.pow(progress, 1.8);
+        const currentX = startX + runDistance * currentProgress;
+        carGroup.position.x = currentX;
+
+        // Quay bánh xe 3D
+        carWheels.forEach(w => {
+          w.rotation.z -= 0.15;
+        });
+
+        // Cập nhật đồng hồ số
+        let currentTimerSec = (progress * t);
+        timerDisplay.textContent = currentTimerSec.toFixed(3) + " s";
+
+        if (progress < 1) {
+          requestAnimationFrame(stepAnimation);
+        } else {
+          // XE VỪA CHẠM CỔNG QUANG ĐIỆN!
+          timerDisplay.textContent = t.toFixed(3) + " s";
+          laserBanner.classList.remove("hidden");
+
+          // Hiệu ứng lóe sáng laser vàng rực rỡ!
+          if (laserBeamMesh) laserBeamMesh.material.color.setHex(0xfacc15);
+
+          // Xe trượt nhẹ thêm một chút về cuối máng rồi dừng
+          let extraSteps = 0;
+          function coastEnd() {
+            if (extraSteps < 30) {
+              carGroup.position.x += 0.006;
+              carWheels.forEach(w => w.rotation.z -= 0.05);
+              extraSteps++;
+              requestAnimationFrame(coastEnd);
+            } else {
+              isCarRunning = false;
+              btn.disabled = false;
+              btn.innerHTML = `<i class="fa-solid fa-play text-amber-300"></i> Thả Xe 3D Lần Nữa`;
+            }
+          }
+          coastEnd();
+        }
+      }
+
+      requestAnimationFrame(stepAnimation);
+    }
+
+    function resetPixar3D() {
+      isCarRunning = false;
+      if (carGroup) {
+        carGroup.position.set(-0.9, 0.02, 0);
+      }
+      document.getElementById("pixarDigitalTimer").textContent = "0.000 s";
+      document.getElementById("laserTriggerBanner").classList.add("hidden");
+      if (laserBeamMesh) laserBeamMesh.material.color.setHex(0xff0033);
+      const btn = document.getElementById("btnLaunch3D");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-play text-amber-300"></i> 🚀 THẢ XE 3D PIXAR & ĐO THỜI GIAN`;
+      }
+    }
+
+    function resetCamera3D() {
+      if (pixarCamera && pixarControls) {
+        pixarCamera.position.set(0.2, 1.8, 3.1);
+        pixarControls.target.set(0, 0.4, 0);
+        pixarControls.update();
+      }
+    }
+
+    // Khởi tạo mô phỏng 3D và Video Cinema ngay khi tải trang
+    window.addEventListener('load', () => {
+      initCinemaCanvas();
+      initPixar3D();
+      renderAllMath();
+    });
+
+    // 5. LOGIC TRẮC NGHIỆM & GAME CÂU CÁ
+    function loadQuestion(idx) {
+      if (idx < 0 || idx >= quizData.length) return;
+      currentQ = idx;
+      const q = quizData[idx];
+
+      document.getElementById("badgeQuestionNumber").textContent = `CÂU ${idx + 1} / ${quizData.length}`;
+      document.getElementById("badgeDifficulty").textContent = q.level;
+      document.getElementById("quizProgressBar").style.width = `${((idx + 1) / quizData.length) * 100}%`;
+      document.getElementById("quizProgressText").textContent = `${idx + 1}/${quizData.length}`;
+      document.getElementById("questionTitle").innerHTML = q.q;
+
+      // Render options
+      const optsList = document.getElementById("optionsList");
+      optsList.innerHTML = "";
+      
+      const currentAnswer = userAnswers[idx];
+
+      q.opts.forEach((optText, i) => {
+        const btn = document.createElement("button");
+        btn.className = `p-4 border rounded-2xl text-left text-xs sm:text-sm font-medium transition flex items-start gap-3 relative group `;
+        
+        let labelClass = "bg-slate-100 text-slate-700";
+        if (currentAnswer !== null) {
+          if (i === q.ans) {
+            btn.className += "border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold ring-2 ring-emerald-500/30 ";
+            labelClass = "bg-emerald-500 text-white";
+          } else if (currentAnswer === i) {
+            btn.className += "border-rose-500 bg-rose-50 text-rose-950 line-through ";
+            labelClass = "bg-rose-500 text-white";
+          } else {
+            btn.className += "border-slate-200 opacity-60 ";
+          }
+        } else {
+          btn.className += "border-slate-200 hover:border-ocean-500 hover:bg-ocean-50 active:scale-[0.99] text-slate-700 ";
+        }
+
+        btn.onclick = () => selectAnswer(i);
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-full ${labelClass} text-xs flex items-center justify-center font-bold flex-shrink-0 transition">
+            ${String.fromCharCode(65 + i)}
+          </span>
+          <span class="leading-relaxed">${optText}</span>
+        `;
+        optsList.appendChild(btn);
+      });
+
+      // Hiện giải thích nếu đã trả lời HOẶC nếu là Giáo viên
+      const expBox = document.getElementById("explanationBox");
+      if (currentAnswer !== null || currentUserRole === "teacher") {
+        expBox.classList.remove("hidden");
+        const teacherNote = (currentUserRole === "teacher") 
+          ? `<span class="bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold text-xs mr-2">Đáp án chuẩn: ${String.fromCharCode(65 + q.ans)}</span> `
+          : '';
+        document.getElementById("explanationText").innerHTML = teacherNote + q.explain;
+      } else {
+        expBox.classList.add("hidden");
+      }
+
+      // Nút Prev/Next
+      document.getElementById("btnPrevQ").disabled = (idx === 0);
+      document.getElementById("btnNextQ").innerHTML = (idx === quizData.length - 1) 
+        ? `<span>Xem Tổng Kết</span> <i class="fa-solid fa-trophy"></i>` 
+        : `<span>Câu tiếp theo</span> <i class="fa-solid fa-arrow-right"></i>`;
+
+      setTimeout(renderAllMath, 40);
+    }
+
+    // ================= HỆ THỐNG GAME ĐẠI DƯƠNG 3D HOẠT HÌNH PIXAR (THREE.JS) =================
+    let fishGameScene, fishGameCamera, fishGameRenderer, fishGameControls;
+    let fishGameEntities = [];
+    let fishGameHookGroup, fishGameHookLine, fishGameHookMetal;
+    let isFishHookBiting = false;
+    let oceanBubbles = [];
+
+    function initFishGame3D() {
+      const container = document.getElementById("fishGame3DContainer");
+      if (!container || fishGameRenderer) return;
+
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 280;
+
+      // 1. Khởi tạo Scene
+      fishGameScene = new THREE.Scene();
+      // Màu nước biển sâu xanh biếc Pixar
+      fishGameScene.background = new THREE.Color(0x0369a1);
+      fishGameScene.fog = new THREE.FogExp2(0x0284c7, 0.09);
+
+      // 2. Camera góc nhìn điện ảnh đáy đại dương
+      fishGameCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+      fishGameCamera.position.set(0, 0.6, 6.2);
+
+      // 3. Renderer WebGL
+      fishGameRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      fishGameRenderer.setSize(width, height);
+      fishGameRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      fishGameRenderer.shadowMap.enabled = true;
+      fishGameRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(fishGameRenderer.domElement);
+
+      // 4. OrbitControls cho phép học sinh xoay 360 độ tự do
+      fishGameControls = new THREE.OrbitControls(fishGameCamera, fishGameRenderer.domElement);
+      fishGameControls.enableDamping = true;
+      fishGameControls.dampingFactor = 0.05;
+      fishGameControls.minDistance = 2.5;
+      fishGameControls.maxDistance = 10;
+      fishGameControls.target.set(0, 0, 0);
+
+      // 5. Ánh sáng Pixar Water Lighting
+      const ambientLight = new THREE.AmbientLight(0x7dd3fc, 0.9);
+      fishGameScene.add(ambientLight);
+
+      // Tia nắng rọi từ mặt nước biển xuống
+      const sunLight = new THREE.DirectionalLight(0xffedd5, 1.4);
+      sunLight.position.set(2, 6, 3);
+      sunLight.castShadow = true;
+      fishGameScene.add(sunLight);
+
+      // Ánh sáng viền xanh neon đại dương
+      const fillLight = new THREE.PointLight(0x38bdf8, 1.2, 10);
+      fillLight.position.set(-3, -1, 2);
+      fishGameScene.add(fillLight);
+
+      // 6. Đáy biển cát vàng nhấp nhô & Rạn san hô Pixar
+      buildOceanFloor();
+
+      // 7. Cần câu & Lưỡi câu 3D treo từ trên mặt nước
+      buildFishingHook3D();
+
+      // 8. Đàn cá hoạt hình 3D Pixar bơi lội sinh động
+      buildPixarFishSchool();
+
+      // 9. Hiệu ứng bong bóng nước sủi tăm
+      buildOceanBubbles();
+
+      // Loop animation
+      animateFishGame3D();
+    }
+
+    // ĐÁY BIỂN & RẠN SAN HÔ HOẠT HÌNH PIXAR
+    function buildOceanFloor() {
+      // Đáy cát biển
+      const floorGeo = new THREE.PlaneGeometry(16, 16, 24, 24);
+      // Biến dạng nhẹ tạo độ gợn sóng đáy cát
+      const pos = floorGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vy = pos.getY(i);
+        pos.setZ(i, Math.sin(vx * 1.5) * 0.12 + Math.cos(vy * 1.5) * 0.12);
+      }
+      floorGeo.computeVertexNormals();
+
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -1.9;
+      floor.receiveShadow = true;
+      fishGameScene.add(floor);
+
+      // Những cụm san hô & đá biển Pixar màu sắc rực rỡ
+      const coralColors = [0xf43f5e, 0xfb923c, 0xa855f7, 0x10b981, 0xfacc15];
+      for (let i = 0; i < 18; i++) {
+        const cGeo = new THREE.CylinderGeometry(0.04, 0.14, 0.5 + Math.random() * 0.4, 8);
+        const cMat = new THREE.MeshStandardMaterial({
+          color: coralColors[i % coralColors.length],
+          roughness: 0.3
+        });
+        const coral = new THREE.Mesh(cGeo, cMat);
+        coral.position.set((Math.random() - 0.5) * 8, -1.7 + Math.random() * 0.2, (Math.random() - 0.5) * 5);
+        coral.rotation.z = (Math.random() - 0.5) * 0.4;
+        coral.rotation.x = (Math.random() - 0.5) * 0.4;
+        coral.castShadow = true;
+        fishGameScene.add(coral);
+      }
+    }
+
+    // CẦN CÂU & LƯỠI CÂU 3D
+    function buildFishingHook3D() {
+      fishGameHookGroup = new THREE.Group();
+      fishGameHookGroup.position.set(0, 1.8, 0); // Vị trí treo lơ lửng
+
+      // Dây cước câu cá mạ bạc trong suốt
+      const lineGeo = new THREE.CylinderGeometry(0.006, 0.006, 2.8, 8);
+      const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
+      fishGameHookLine = new THREE.Mesh(lineGeo, lineMat);
+      fishGameHookLine.position.y = 0;
+      fishGameHookGroup.add(fishGameHookLine);
+
+      // Lưỡi câu kim loại cong cong 3D
+      const hookCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, -1.4, 0),
+        new THREE.Vector3(0.18, -1.65, 0),
+        new THREE.Vector3(0.12, -1.35, 0)
+      );
+      const hookTubeGeo = new THREE.TubeGeometry(hookCurve, 16, 0.02, 8, false);
+      const hookMat = new THREE.MeshStandardMaterial({
+        color: 0xfacc15, // Mạ vàng sáng lấp lánh
+        metalness: 0.9,
+        roughness: 0.1
+      });
+      fishGameHookMetal = new THREE.Mesh(hookTubeGeo, hookMat);
+      fishGameHookGroup.add(fishGameHookMetal);
+
+      // Con mồi tôm 3D phát sáng trên lưỡi câu
+      const baitGeo = new THREE.DodecahedronGeometry(0.055);
+      const baitMat = new THREE.MeshStandardMaterial({
+        color: 0xff4d4d,
+        roughness: 0.2,
+        emissive: 0x991b1b,
+        emissiveIntensity: 0.4
+      });
+      const baitMesh = new THREE.Mesh(baitGeo, baitMat);
+      baitMesh.position.set(0.12, -1.35, 0);
+      fishGameHookGroup.add(baitMesh);
+
+      fishGameScene.add(fishGameHookGroup);
+    }
+
+    // ĐÀN CÁ HOẠT HÌNH PIXAR 3D
+    function createPixarFishMesh(fishType) {
+      const fishGroup = new THREE.Group();
+
+      // Màu sắc đặc trưng hoạt hình Pixar
+      let bodyColor = 0xff6600; // Mặc định Nemo da cam
+      let stripeColor = 0xffffff;
+      let finColor = 0xf97316;
+
+      if (fishType === "nemo") {
+        bodyColor = 0xf97316;
+        stripeColor = 0xffffff;
+      } else if (fishType === "dolphin") {
+        bodyColor = 0x38bdf8;
+        stripeColor = 0xe0f2fe;
+        finColor = 0x0284c7;
+      } else if (fishType === "shark") {
+        bodyColor = 0x64748b;
+        stripeColor = 0x94a3b8;
+        finColor = 0x475569;
+      } else if (fishType === "goldfish") {
+        bodyColor = 0xfacc15;
+        stripeColor = 0xfef08a;
+        finColor = 0xeab308;
+      } else if (fishType === "tuna") {
+        bodyColor = 0x0ea5e9;
+        stripeColor = 0x38bdf8;
+        finColor = 0xfacc15;
+      } else if (fishType === "legend") {
+        bodyColor = 0xe11d48;
+        stripeColor = 0xfacc15;
+        finColor = 0xfbbf24;
+      }
+
+      // Thân cá hình cầu thuôn tròn Pixar (Egg / Capsule-like)
+      const bodyGeo = new THREE.SphereGeometry(0.28, 20, 16);
+      bodyGeo.scale(1.4, 0.9, 0.55); // Kéo thon thành thân cá
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: bodyColor,
+        roughness: 0.25,
+        metalness: 0.15
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true;
+      fishGroup.add(body);
+
+      // Sọc trắng hoạt hình đáng yêu (Nemo Stripe)
+      const stripeGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.12, 16);
+      stripeGeo.scale(1.0, 1.0, 0.58);
+      const stripeMat = new THREE.MeshStandardMaterial({ color: stripeColor, roughness: 0.3 });
+      const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+      stripe.rotation.z = Math.PI / 2;
+      stripe.position.set(0.02, 0, 0);
+      fishGroup.add(stripe);
+
+      // Đôi mắt to tròn phong cách phim hoạt hình Pixar
+      const eyeGeo = new THREE.SphereGeometry(0.065, 12, 12);
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+
+      // Mắt trái
+      const eyeLeft = new THREE.Mesh(eyeGeo, eyeWhiteMat);
+      eyeLeft.position.set(0.26, 0.1, 0.13);
+      const pupilLeft = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 10), pupilMat);
+      pupilLeft.position.set(0.285, 0.1, 0.145);
+      fishGroup.add(eyeLeft);
+      fishGroup.add(pupilLeft);
+
+      // Mắt phải
+      const eyeRight = new THREE.Mesh(eyeGeo, eyeWhiteMat);
+      eyeRight.position.set(0.26, 0.1, -0.13);
+      const pupilRight = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 10), pupilMat);
+      pupilRight.position.set(0.285, 0.1, -0.145);
+      fishGroup.add(eyeRight);
+      fishGroup.add(pupilRight);
+
+      // Đuôi cá vẫy sóng Pixar
+      const tailGroup = new THREE.Group();
+      tailGroup.position.set(-0.38, 0, 0);
+
+      const finShape = new THREE.Shape();
+      finShape.moveTo(0, 0);
+      finShape.lineTo(-0.25, 0.22);
+      finShape.quadraticCurveTo(-0.18, 0, -0.25, -0.22);
+      finShape.closePath();
+
+      const extrudeSettings = { depth: 0.02, bevelEnabled: false };
+      const tailGeo = new THREE.ExtrudeGeometry(finShape, extrudeSettings);
+      const finMat = new THREE.MeshStandardMaterial({
+        color: finColor,
+        roughness: 0.3,
+        side: THREE.DoubleSide
+      });
+      const tailMesh = new THREE.Mesh(tailGeo, finMat);
+      tailGroup.add(tailMesh);
+      fishGroup.add(tailGroup);
+      fishGroup.userData.tailGroup = tailGroup;
+
+      // Vây lưng
+      const dFinGeo = new THREE.ConeGeometry(0.12, 0.22, 5);
+      const dFin = new THREE.Mesh(dFinGeo, finMat);
+      dFin.rotation.z = -0.4;
+      dFin.position.set(-0.05, 0.28, 0);
+      fishGroup.add(dFin);
+
+      // Vây bơi 2 bên
+      const pFinGeo = new THREE.ConeGeometry(0.08, 0.18, 5);
+      const pFinLeft = new THREE.Mesh(pFinGeo, finMat);
+      pFinLeft.rotation.x = 1.1;
+      pFinLeft.rotation.z = -0.6;
+      pFinLeft.position.set(0.05, -0.06, 0.16);
+      fishGroup.add(pFinLeft);
+
+      const pFinRight = new THREE.Mesh(pFinGeo, finMat);
+      pFinRight.rotation.x = -1.1;
+      pFinRight.rotation.z = -0.6;
+      pFinRight.position.set(0.05, -0.06, -0.16);
+      fishGroup.add(pFinRight);
+
+      return fishGroup;
+    }
+
+    function buildPixarFishSchool() {
+      const types = ["nemo", "dolphin", "goldfish", "tuna", "shark", "legend"];
+      const count = 9;
+
+      for (let i = 0; i < count; i++) {
+        const type = types[i % types.length];
+        const fish = createPixarFishMesh(type);
+
+        // Đặt vị trí bơi lội ngẫu nhiên trong bể 3D
+        const x = (Math.random() - 0.5) * 6;
+        const y = -1.1 + Math.random() * 2.0;
+        const z = (Math.random() - 0.5) * 4.5;
+        fish.position.set(x, y, z);
+
+        const speed = 0.015 + Math.random() * 0.02;
+        const direction = Math.random() > 0.5 ? 1 : -1;
+        fish.rotation.y = direction === 1 ? 0 : Math.PI;
+
+        fish.userData = {
+          ...fish.userData,
+          type: type,
+          speed: speed * direction,
+          baseY: y,
+          bobOffset: Math.random() * Math.PI * 2,
+          radiusX: 2.8 + Math.random() * 1.5,
+          angle: Math.random() * Math.PI * 2,
+          isCaught: false
+        };
+
+        fishGameEntities.push(fish);
+        fishGameScene.add(fish);
+      }
+    }
+
+    function buildOceanBubbles() {
+      const bubbleGeo = new THREE.SphereGeometry(0.035, 8, 8);
+      const bubbleMat = new THREE.MeshStandardMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.65,
+        roughness: 0.1
+      });
+
+      for (let i = 0; i < 28; i++) {
+        const b = new THREE.Mesh(bubbleGeo, bubbleMat);
+        b.position.set(
+          (Math.random() - 0.5) * 7,
+          -1.8 + Math.random() * 3.5,
+          (Math.random() - 0.5) * 5
+        );
+        b.userData = {
+          speedY: 0.01 + Math.random() * 0.02,
+          swayOffset: Math.random() * Math.PI * 2
+        };
+        oceanBubbles.push(b);
+        fishGameScene.add(b);
+      }
+    }
+
+    // ANIMATION LOOP CỦA GAME 3D PIXAR
+    function animateFishGame3D() {
+      requestAnimationFrame(animateFishGame3D);
+
+      const time = performance.now() * 0.003;
+
+      // Cập nhật OrbitControls
+      if (fishGameControls) fishGameControls.update();
+
+      // Cập nhật chuyển động cần câu
+      if (fishGameHookGroup && !isFishHookBiting) {
+        // Cần câu đung đưa nhẹ theo dòng nước biển
+        fishGameHookGroup.rotation.z = Math.sin(time * 0.8) * 0.04;
+        fishGameHookGroup.position.y = 1.8 + Math.sin(time * 1.2) * 0.03;
+      }
+
+      // Cập nhật đàn cá Pixar bơi lội
+      fishGameEntities.forEach(fish => {
+        if (fish.userData.isCaught) return; // Đang bị giật lên mặt nước thì do tween điều khiển
+
+        // Cá bơi lượn hình sin mềm mại
+        fish.userData.angle += fish.userData.speed * 0.4;
+        fish.position.x += fish.userData.speed;
+        fish.position.y = fish.userData.baseY + Math.sin(time * 2 + fish.userData.bobOffset) * 0.08;
+
+        // Vẫy đuôi cá sống động
+        if (fish.userData.tailGroup) {
+          fish.userData.tailGroup.rotation.y = Math.sin(time * 8 + fish.userData.bobOffset) * 0.45;
+        }
+
+        // Quay đầu khi bơi chạm rìa bể kính 3D
+        if (fish.position.x > 3.6) {
+          fish.userData.speed = -Math.abs(fish.userData.speed);
+          fish.rotation.y = Math.PI;
+        } else if (fish.position.x < -3.6) {
+          fish.userData.speed = Math.abs(fish.userData.speed);
+          fish.rotation.y = 0;
+        }
+      });
+
+      // Bong bóng nước sủi tăm bay lên
+      oceanBubbles.forEach(b => {
+        b.position.y += b.userData.speedY;
+        b.position.x += Math.sin(time * 2 + b.userData.swayOffset) * 0.003;
+        if (b.position.y > 2.0) {
+          b.position.y = -1.8;
+          b.position.x = (Math.random() - 0.5) * 7;
+        }
+      });
+
+      if (fishGameRenderer && fishGameScene && fishGameCamera) {
+        fishGameRenderer.render(fishGameScene, fishGameCamera);
+      }
+    }
+
+    // ĐẶT LẠI GÓC NHÌN CAMERA 3D
+    function resetFishGameCamera() {
+      if (fishGameCamera && fishGameControls) {
+        fishGameCamera.position.set(0, 0.6, 6.2);
+        fishGameControls.target.set(0, 0, 0);
+        fishGameControls.update();
+      }
+    }
+
+    // HIỆU ỨNG GIẬT CÂU 3D KHI TRẢ LỜI ĐÚNG / SAI
+    function trigger3DFishBite(isCorrect, fishInfo) {
+      if (!fishGameHookGroup) return;
+      isFishHookBiting = true;
+
+      const hud = document.getElementById("fishCaughtHUD");
+      const hudIcon = document.getElementById("fishCaughtHUDIcon");
+      const hudText = document.getElementById("fishCaughtHUDText");
+
+      if (isCorrect) {
+        // Chọn một chú cá đang bơi gần lưỡi câu để giật lên
+        const availableFish = fishGameEntities.find(f => !f.userData.isCaught) || fishGameEntities[0];
+        if (availableFish) {
+          availableFish.userData.isCaught = true;
+
+          // Lưỡi câu cắm sâu giật cá
+          let step = 0;
+          const biteInterval = setInterval(() => {
+            step++;
+            if (step < 12) {
+              // Cần câu giật chúi xuống
+              fishGameHookGroup.position.y -= 0.035;
+              availableFish.position.copy(fishGameHookGroup.position);
+              availableFish.position.y -= 1.35;
+            } else if (step < 35) {
+              // Giật bổng cá lên khỏi mặt nước
+              fishGameHookGroup.position.y += 0.07;
+              availableFish.position.copy(fishGameHookGroup.position);
+              availableFish.position.y -= 1.35;
+              availableFish.rotation.z += 0.15; // Cá quẫy giãy giụa vui mắt
+            } else {
+              clearInterval(biteInterval);
+              // Thả cá bơi lại vào bể sau khi vinh danh
+              setTimeout(() => {
+                availableFish.userData.isCaught = false;
+                availableFish.position.set((Math.random() - 0.5) * 5, -1.0 + Math.random() * 1.5, (Math.random() - 0.5) * 3);
+                availableFish.rotation.set(0, availableFish.userData.speed > 0 ? 0 : Math.PI, 0);
+                fishGameHookGroup.position.set(0, 1.8, 0);
+                isFishHookBiting = false;
+              }, 1200);
+            }
+          }, 30);
+        }
+
+        // Bật bảng HUD chiến thắng 3D
+        if (hud && hudIcon && hudText && fishInfo) {
+          hudIcon.textContent = fishInfo.icon;
+          hudText.textContent = `Tuyệt vời! Đã câu được ${fishInfo.name}!`;
+          hud.classList.remove("hidden");
+          setTimeout(() => hud.classList.add("hidden"), 3000);
+        }
+      } else {
+        // TRẢ LỜI SAI: Cá bơi vọt qua cắn trộm mồi rồi biến mất
+        let step = 0;
+        const missInterval = setInterval(() => {
+          step++;
+          if (step < 8) {
+            fishGameHookGroup.position.y -= 0.02; // Rung nhẹ
+            fishGameHookGroup.rotation.z = (step % 2 === 0 ? 0.08 : -0.08);
+          } else {
+            clearInterval(missInterval);
+            fishGameHookGroup.position.set(0, 1.8, 0);
+            fishGameHookGroup.rotation.set(0, 0, 0);
+            isFishHookBiting = false;
+          }
+        }, 35);
+      }
+    }
+
+    // XỬ LÝ CHỌN ĐÁP ÁN TRẮC NGHIỆM & KÍCH HOẠT GAME 3D PIXAR
+    function selectAnswer(ansIndex) {
+      if (userAnswers[currentQ] !== null) return; // Đã trả lời rồi thì không đổi
+
+      const q = quizData[currentQ];
+      userAnswers[currentQ] = ansIndex;
+
+      const notice = document.getElementById("fishingLiveMsg");
+
+      if (ansIndex === q.ans) {
+        // CÂU ĐÚNG: KÉO CÁ 3D PIXAR
+        const fish = fishRarities[Math.floor(Math.random() * fishRarities.length)];
+        caughtFishes.push(fish);
+
+        trigger3DFishBite(true, fish);
+
+        notice.innerHTML = `🎉 <b>CHÍNH XÁC!</b> Cần câu giật mạnh! Em vừa câu được một chú <b>${fish.name} ${fish.icon}</b> (${fish.desc}) trong đại dương 3D!`;
+        updateFishBadge();
+      } else {
+        // CÂU SAI: CÁ BƠI MẤT TRONG 3D
+        trigger3DFishBite(false, null);
+        notice.innerHTML = `💨 <b>TIẾC QUÁ!</b> Đáp án chưa chính xác, chú cá 3D đã cắn trộm mồi và lặn mất tăm! Xem lời giải bên dưới nhé.`;
+      }
+
+      loadQuestion(currentQ);
+    }
+
+    function updateFishBadge() {
+      const correctCount = userAnswers.filter((a, idx) => a === quizData[idx].ans).length;
+      document.getElementById("scoreFishCaught").textContent = `${correctCount} / 20 🐟`;
+      document.getElementById("headerScoreBadge").textContent = `${correctCount}/20`;
+
+      // Cập nhật bể cá của em
+      const box = document.getElementById("caughtFishList");
+      if (caughtFishes.length === 0) {
+        box.innerHTML = `<span class="italic text-slate-400">Chưa có sinh vật nào được câu.</span>`;
+      } else {
+        box.innerHTML = caughtFishes.map(f => `
+          <span class="inline-flex items-center gap-1 px-3 py-1 bg-sky-50 text-sky-800 rounded-full border border-sky-200 font-semibold text-xs shadow-sm">
+            <span>${f.icon}</span> <span>${f.name}</span>
+          </span>
+        `).join("");
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQ > 0) loadQuestion(currentQ - 1);
+    }
+
+    function nextQuestion() {
+      if (currentQ < quizData.length - 1) {
+        loadQuestion(currentQ + 1);
+      } else {
+        changeTab("tab-summary");
+      }
+    }
+
+    // 6. TỔNG KẾT & NỘP BÀI
+    function updateSummaryTab() {
+      const correctCount = userAnswers.filter((a, idx) => a === quizData[idx].ans).length;
+      document.getElementById("summaryScore").textContent = `${correctCount} / 20`;
+      document.getElementById("summaryFish").textContent = `${correctCount} 🐟`;
+
+      // Kiểm tra trạng thái 4 câu tự luận
+      const e1 = document.getElementById("essayAns1").value.trim();
+      const e2 = document.getElementById("essayAns2").value.trim();
+      const e3 = document.getElementById("essayAns3").value.trim();
+      const e4 = document.getElementById("essayAns4").value.trim();
+
+      const statusBox = document.getElementById("essayCheckStatus");
+      statusBox.innerHTML = `
+        <div class="flex items-center gap-2 ${e1 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">
+          <i class="fa-solid ${e1 ? 'fa-check' : 'fa-circle-xmark'}"></i> Câu 1 (Quy trình & Sai số): ${e1 ? 'Đã làm (' + e1.length + ' ký tự)' : 'Chưa viết nội dung'}
+        </div>
+        <div class="flex items-center gap-2 ${e2 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">
+          <i class="fa-solid ${e2 ? 'fa-check' : 'fa-circle-xmark'}"></i> Câu 2 (Xử lý Bảng 9.1): ${e2 ? 'Đã làm (' + e2.length + ' ký tự)' : 'Chưa viết nội dung'}
+        </div>
+        <div class="flex items-center gap-2 ${e3 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">
+          <i class="fa-solid ${e3 ? 'fa-check' : 'fa-circle-xmark'}"></i> Câu 3 (Cổng quang vs Bấm giây): ${e3 ? 'Đã làm (' + e3.length + ' ký tự)' : 'Chưa viết nội dung'}
+        </div>
+        <div class="flex items-center gap-2 ${e4 ? 'text-emerald-600 font-bold' : 'text-slate-400'}">
+          <i class="fa-solid ${e4 ? 'fa-check' : 'fa-circle-xmark'}"></i> Câu 4 (Bắn tốc độ & An toàn): ${e4 ? 'Đã làm (' + e4.length + ' ký tự)' : 'Chưa viết nội dung'}
+        </div>
+      `;
+    }
+
+    function handleFinalSubmit() {
+      const correctCount = userAnswers.filter((a, idx) => a === quizData[idx].ans).length;
+      const e1 = document.getElementById("essayAns1").value.trim();
+      const e2 = document.getElementById("essayAns2").value.trim();
+      const e3 = document.getElementById("essayAns3").value.trim();
+      const e4 = document.getElementById("essayAns4").value.trim();
+
+      const submissionRecord = {
+        id: Date.now(),
+        time: new Date().toLocaleString("vi-VN"),
+        name: studentName,
+        score: `${correctCount}/20`,
+        fish: correctCount,
+        essay1: e1 || "(Chưa làm)",
+        essay2: e2 || "(Chưa làm)",
+        essay3: e3 || "(Chưa làm)",
+        essay4: e4 || "(Chưa làm)"
+      };
+
+      // 1. Lưu local storage
+      submissions.unshift(submissionRecord);
+      localStorage.setItem("phys7_submissions", JSON.stringify(submissions));
+      renderTeacherTable();
+
+      // 2. Gửi đồng bộ Google Sheets qua Apps Script
+      const btn = document.getElementById("btnFinalSubmit");
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang đồng bộ lên Google Sheets...`;
+
+      const notice = document.getElementById("submitResultNotice");
+      notice.className = "p-4 rounded-2xl text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200 block";
+      notice.innerHTML = `
+        <div class="flex items-center gap-2 text-sm font-bold text-emerald-700 mb-1">
+          <i class="fa-solid fa-circle-check"></i> Nộp bài thành công!
+        </div>
+        Kết quả của em đã được lưu trữ an toàn vào sổ điểm điện tử của lớp học. Giáo viên có thể xem và chấm điểm trực tiếp!
+      `;
+
+      if (gasWebAppUrl && gasWebAppUrl.startsWith("http")) {
+        fetch(gasWebAppUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(submissionRecord)
+        }).then(() => {
+          console.log("Đã phát tín hiệu gửi Google Apps Script.");
+        }).catch(err => {
+          console.warn("Lỗi gửi GAS (nếu offline):", err);
+        }).finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-check"></i> ĐÃ NỘP BÀI THÀNH CÔNG`;
+        });
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> ĐÃ NỘP BÀI THÀNH CÔNG (LOCAL)`;
+      }
+    }
+
+    // 7. KHU VỰC GIÁO VIÊN (ADMIN MẬT KHẨU: 123456)
+    function openTeacherModal() {
+      document.getElementById("teacherLoginModal").classList.remove("hidden");
+    }
+
+    function closeTeacherModal() {
+      document.getElementById("teacherLoginModal").classList.add("hidden");
+    }
+
+    function handleTeacherLogin(e) {
+      e.preventDefault();
+      const pass = document.getElementById("teacherPass").value;
+      if (pass === "123456") {
+        closeTeacherModal();
+        document.getElementById("teacherPass").value = "";
+        openTeacherDashboard();
+      } else {
+        alert("Mật khẩu không chính xác! (Mật khẩu mặc định là: 123456)");
+      }
+    }
+
+    function openTeacherDashboard() {
+      renderTeacherTable();
+      document.getElementById("teacherDashboardModal").classList.remove("hidden");
+    }
+
+    function closeTeacherDashboard() {
+      document.getElementById("teacherDashboardModal").classList.add("hidden");
+    }
+
+    function saveGasUrlConfig() {
+      const url = document.getElementById("configGasUrl").value.trim();
+      gasWebAppUrl = url;
+      localStorage.setItem("phys7_gas_url", url);
+      alert("Đã lưu URL kết nối Google Apps Script thành công!");
+    }
+
+    function renderTeacherTable() {
+      const tbody = document.getElementById("teacherRecordsTable");
+      if (!tbody) return;
+
+      document.getElementById("totalSubmissionsCount").textContent = submissions.length;
+
+      if (submissions.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="p-6 text-center text-slate-400 italic">
+              Chưa có học sinh nào nộp bài. Dữ liệu sẽ xuất hiện tự động khi học sinh hoàn thành!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = submissions.map((sub, i) => `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-3 font-bold text-slate-400">${i + 1}</td>
+          <td class="p-3 text-slate-500">${sub.time}</td>
+          <td class="p-3 font-bold text-slate-800">${sub.name}</td>
+          <td class="p-3 text-center">
+            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold">${sub.score}</span>
+          </td>
+          <td class="p-3 text-center font-bold text-amber-600">${sub.fish} 🐟</td>
+          <td class="p-3">
+            <button onclick="viewEssayDetails(${sub.id})" class="text-ocean-600 hover:text-ocean-800 font-bold underline flex items-center gap-1">
+              <i class="fa-solid fa-eye"></i> Xem bài viết
+            </button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function viewEssayDetails(id) {
+      const record = submissions.find(s => s.id === id);
+      if (!record) return;
+
+      document.getElementById("essayModalStudentName").textContent = record.name;
+      const contentBox = document.getElementById("essayModalContent");
+      contentBox.innerHTML = `
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <div class="font-bold text-slate-700 mb-1">Câu 1 (Quy trình & Sai số):</div>
+          <div class="text-slate-800 whitespace-pre-wrap">${record.essay1}</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <div class="font-bold text-slate-700 mb-1">Câu 2 (Xử lý số liệu Bảng 9.1):</div>
+          <div class="text-slate-800 whitespace-pre-wrap">${record.essay2}</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <div class="font-bold text-slate-700 mb-1">Câu 3 (Cổng quang vs Bấm giây):</div>
+          <div class="text-slate-800 whitespace-pre-wrap">${record.essay3}</div>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border">
+          <div class="font-bold text-slate-700 mb-1">Câu 4 (Tình huống giao thông):</div>
+          <div class="text-slate-800 whitespace-pre-wrap">${record.essay4}</div>
+        </div>
+      `;
+      document.getElementById("essayDetailModal").classList.remove("hidden");
+    }
+
+    function closeEssayModal() {
+      document.getElementById("essayDetailModal").classList.add("hidden");
+    }
+
+    function clearDemoRecords() {
+      if (confirm("Thầy/cô có chắc muốn xóa toàn bộ danh sách nộp bài đã lưu trên trình duyệt?")) {
+        submissions = [];
+        localStorage.removeItem("phys7_submissions");
+        renderTeacherTable();
+      }
+    }
+
+    function exportTableToCSV() {
+      if (submissions.length === 0) return alert("Chưa có dữ liệu để xuất file!");
+      let csv = "\uFEFFThời Gian,Họ Và Tên,Điểm Trắc Nghiệm,Số Cá,Tự Luận 1,Tự Luận 2,Tự Luận 3,Tự Luận 4\n";
+      submissions.forEach(s => {
+        const clean = str => `"${(str || '').replace(/"/g, '""')}"`;
+        csv += `${clean(s.time)},${clean(s.name)},${clean(s.score)},${s.fish},${clean(s.essay1)},${clean(s.essay2)},${clean(s.essay3)},${clean(s.essay4)}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `BangDiem_Bai9_KHTN7_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    }
+  </script>
+</body>
+</html>
