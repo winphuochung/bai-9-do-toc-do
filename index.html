@@ -1079,9 +1079,10 @@
     let currentQ = 0;
     let teacherCheatMode = false; // Chế độ giáo viên xem trước đáp án
 
-    // Quản lý lưu trữ Giáo viên
+    // Quản lý lưu trữ Giáo viên & Đồng bộ Google Sheets
     let submissions = JSON.parse(localStorage.getItem("phys7_submissions") || "[]");
-    let gasWebAppUrl = localStorage.getItem("phys7_gas_url") || "https://script.google.com/macros/s/AKfycbxYOUR_SCRIPT_ID/exec";
+    const OFFICIAL_GAS_URL = "https://script.google.com/macros/s/AKfycbxSGcmsKJ1a0SmTFWzk3xpPvahrhiRK7JfOgWXHroy6BPiwCFxDcoDgjZF4jkDEQNzUVQ/exec";
+    let gasWebAppUrl = localStorage.getItem("phys7_gas_url") || OFFICIAL_GAS_URL;
 
     // Khởi tạo
     document.addEventListener("DOMContentLoaded", () => {
