@@ -127,8 +127,9 @@
           </button>
         </div>
 
-        <div class="inline-block p-3.5 bg-ocean-50 text-ocean-600 rounded-2xl mb-3 shadow-inner">
-          <i id="authIconHeader" class="fa-solid fa-compass-drafting text-3xl sm:text-4xl text-ocean-600"></i>
+        <!-- LOGO DỰ ÁN CHÍNH THỨC -->
+        <div class="inline-flex items-center justify-center p-2.5 bg-sky-50 rounded-3xl mb-3 shadow-md border border-sky-100 group transition hover:scale-105">
+          <img id="authLogoImg" src="logo.png" alt="Logo Đo Tốc Độ" class="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-2xl drop-shadow-sm transition duration-300">
         </div>
         <h2 id="authHeading" class="text-xl sm:text-2xl font-black text-slate-800 tracking-tight mb-1.5">Chào mừng em đến với Bài 9!</h2>
         <p id="authSubheading" class="text-xs sm:text-sm text-slate-500 mb-5 leading-relaxed">
@@ -1104,7 +1105,7 @@
         tabTeacher.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
         formStudent.classList.remove("hidden");
         formTeacher.classList.add("hidden");
-        icon.className = "fa-solid fa-compass-drafting text-3xl sm:text-4xl text-ocean-600";
+        if (icon) icon.className = "fa-solid fa-compass-drafting text-3xl sm:text-4xl text-ocean-600";
         heading.textContent = "Chào mừng em đến với Bài 9!";
         subheading.innerHTML = "Tìm hiểu cách đo tốc độ bằng <b>đồng hồ bấm giây</b>, <b>cổng quang điện</b>, <b>thiết bị bắn tốc độ</b> và tham gia trò chơi <b>Câu cá đại dương</b> kỳ thú!";
       } else {
@@ -1112,7 +1113,7 @@
         tabStudent.className = "flex-1 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800";
         formStudent.classList.add("hidden");
         formTeacher.classList.remove("hidden");
-        icon.className = "fa-solid fa-chalkboard-user text-3xl sm:text-4xl text-ocean-700";
+        if (icon) icon.className = "fa-solid fa-chalkboard-user text-3xl sm:text-4xl text-ocean-700";
         heading.textContent = "Cổng Đăng Nhập Giáo Viên";
         subheading.innerHTML = "Đăng nhập với quyền Giáo viên để trải nghiệm toàn bộ bài học, kiểm tra đề thi, mô phỏng và quản lý <b>Sổ điểm lớp học</b>.";
       }
